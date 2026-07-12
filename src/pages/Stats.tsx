@@ -1,13 +1,30 @@
 import { useStore } from "../store/useStore";
-import { useMemo } from "react";
-import { format, subDays, eachDayOfInterval } from "date-fns";
+import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { format, subDays, eachDayOfInterval, startOfYear, endOfYear, startOfMonth, endOfMonth } from "date-fns";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Flame } from "lucide-react";
+import { Flame, Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import { isTaskScheduledOnDate, cn } from "../lib/utils";
 
 export function Stats() {
   const tasks = useStore((state) => state.tasks);
   const completions = useStore((state) => state.completions);
+
+  // Task selection for chart
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('all');
+
+  // Month / Year selection for consistency map
+  const [heatmapYear, setHeatmapYear] = useState<number>(new Date().getFullYear());
+  const [heatmapMonth, setHeatmapMonth] = useState<number | 'all'>('all');
+  
+  // Tooltip state for heatmap
+  const [hoveredDay, setHoveredDay] = useState<{
+    date: string;
+    displayDate: string;
+    count: number;
+    scheduledCount: number;
+    rect: DOMRect;
+  } | null>(null);
 
   // Compute total streak (days in a row with at least one completion)
   const streak = useMemo(() => {
@@ -32,40 +49,103 @@ export function Stats() {
     return currentStreak;
   }, [completions]);
 
-  // Last 30 days data for chart
+  // Last 30 days data for chart based on selected task
   const chartData = useMemo(() => {
     const today = new Date();
     const last30 = eachDayOfInterval({ start: subDays(today, 29), end: today });
     
     return last30.map(day => {
       const dateStr = format(day, 'yyyy-MM-dd');
-      const count = completions.filter(c => c.date === dateStr).length;
+      let count = 0;
+      if (selectedTaskId === 'all') {
+        count = completions.filter(c => c.date === dateStr).length;
+      } else {
+        count = completions.filter(c => c.date === dateStr && c.taskId === selectedTaskId).length;
+      }
       return {
         date: format(day, 'MMM d'),
         fullDate: dateStr,
         completions: count
       };
     });
-  }, [completions]);
+  }, [completions, selectedTaskId]);
 
-  // Heatmap data (last 90 days)
-  const heatmapData = useMemo(() => {
-    const today = new Date();
-    const last90 = eachDayOfInterval({ start: subDays(today, 89), end: today });
-    
-    return last90.map(day => {
-      const dateStr = format(day, 'yyyy-MM-dd');
-      const count = completions.filter(c => c.date === dateStr).length;
-      const scheduledCount = tasks.filter(t => isTaskScheduledOnDate(t, day)).length;
-      
-      return {
-        date: dateStr,
-        displayDate: format(day, 'MMM d, yyyy'),
-        count,
-        scheduledCount
-      };
+  // Available years based on data
+  const availableYears = useMemo(() => {
+    let minYear = new Date().getFullYear();
+    completions.forEach(c => {
+      const y = parseInt(c.date.split('-')[0]);
+      if (!isNaN(y) && y < minYear) minYear = y;
     });
+    tasks.forEach(t => {
+      const y = new Date(t.createdAt).getFullYear();
+      if (!isNaN(y) && y < minYear) minYear = y;
+    });
+    
+    const years = [];
+    for (let i = new Date().getFullYear(); i >= minYear; i--) {
+      years.push(i);
+    }
+    return years.length > 0 ? years : [new Date().getFullYear()];
   }, [completions, tasks]);
+
+  const MONTHS = [
+    { value: 0, label: 'January' },
+    { value: 1, label: 'February' },
+    { value: 2, label: 'March' },
+    { value: 3, label: 'April' },
+    { value: 4, label: 'May' },
+    { value: 5, label: 'June' },
+    { value: 6, label: 'July' },
+    { value: 7, label: 'August' },
+    { value: 8, label: 'September' },
+    { value: 9, label: 'October' },
+    { value: 10, label: 'November' },
+    { value: 11, label: 'December' },
+  ];
+
+  // Heatmap data based on month/year
+  const heatmapData = useMemo(() => {
+    let start, end;
+    
+    if (heatmapMonth === 'all') {
+      start = startOfYear(new Date(heatmapYear, 0, 1));
+      end = endOfYear(new Date(heatmapYear, 0, 1));
+    } else {
+      start = startOfMonth(new Date(heatmapYear, heatmapMonth as number, 1));
+      end = endOfMonth(new Date(heatmapYear, heatmapMonth as number, 1));
+    }
+    
+    const days = eachDayOfInterval({ start, end });
+    
+    // Group days by column (weeks). For a real calendar feel, we align to Sundays.
+    // We pad the first week so the first day of the interval aligns with its dayOfWeek.
+    const startPadding = start.getDay(); // 0 for Sunday
+    const paddedDays: (Date | null)[] = Array(startPadding).fill(null);
+    paddedDays.push(...days);
+    
+    const columns: any[][] = [];
+    for (let i = 0; i < paddedDays.length; i += 7) {
+      const weekDays = paddedDays.slice(i, i + 7);
+      
+      columns.push(weekDays.map(day => {
+        if (!day) return null;
+        
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const count = completions.filter(c => c.date === dateStr).length;
+        const scheduledCount = tasks.filter(t => isTaskScheduledOnDate(t, day)).length;
+        
+        return {
+          date: dateStr,
+          displayDate: format(day, 'MMM d, yyyy'),
+          count,
+          scheduledCount
+        };
+      }));
+    }
+    
+    return columns;
+  }, [completions, tasks, heatmapYear, heatmapMonth]);
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -98,7 +178,23 @@ export function Stats() {
       </div>
 
       <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8">
-        <h2 className="text-lg font-light text-theme-text mb-6">Activity (Last 30 Days)</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h2 className="text-lg font-light text-theme-text">Activity (Last 30 Days)</h2>
+          <div className="relative">
+            <select
+              value={selectedTaskId}
+              onChange={(e) => setSelectedTaskId(e.target.value)}
+              className="appearance-none bg-theme-bg border border-theme-border rounded-xl px-4 py-2 pr-10 text-sm text-theme-text focus:outline-none focus:border-theme-accent w-full sm:w-auto min-w-[200px]"
+            >
+              <option value="all">All Tasks</option>
+              {tasks.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-theme-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
+        
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -120,43 +216,99 @@ export function Stats() {
         </div>
       </div>
 
-      <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8 overflow-x-auto">
-        <h2 className="text-lg font-light text-theme-text mb-6">Consistency Map (Last 90 Days)</h2>
-        <div className="flex gap-1.5 min-w-max pb-4">
-          {/* Group into weeks roughly */}
-          {Array.from({ length: Math.ceil(heatmapData.length / 7) }).map((_, colIdx) => (
-            <div key={colIdx} className="flex flex-col gap-1.5">
-              {heatmapData.slice(colIdx * 7, (colIdx + 1) * 7).map((day) => (
-                <div 
-                  key={day.date}
-                  className={cn(
-                    "w-4 h-4 rounded-sm transition-colors duration-300 relative group cursor-pointer",
-                    day.count === 0 ? 'bg-theme-border/50' :
-                    day.count < day.scheduledCount ? 'bg-theme-accent/40' :
-                    'bg-theme-accent shadow-[0_0_8px_var(--accent-color)]'
-                  )}
-                >
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-50 w-max bg-theme-bg border border-theme-border rounded-lg px-3 py-2 shadow-xl">
-                    <span className="text-xs font-medium text-theme-text mb-1">{day.displayDate}</span>
-                    <div className="text-xs text-theme-muted">
-                      {day.count} / {day.scheduledCount} Tasks Completed
-                    </div>
-                    {/* Tooltip arrow */}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-theme-bg" />
-                  </div>
-                </div>
-              ))}
+      <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h2 className="text-lg font-light text-theme-text">Consistency Map</h2>
+          
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <select
+                value={heatmapMonth}
+                onChange={(e) => setHeatmapMonth(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                className="appearance-none bg-theme-bg border border-theme-border rounded-xl px-4 py-2 pr-10 text-sm text-theme-text focus:outline-none focus:border-theme-accent"
+              >
+                <option value="all">All Year</option>
+                {MONTHS.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-theme-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
-          ))}
+            
+            <div className="relative">
+              <select
+                value={heatmapYear}
+                onChange={(e) => setHeatmapYear(parseInt(e.target.value))}
+                className="appearance-none bg-theme-bg border border-theme-border rounded-xl px-4 py-2 pr-10 text-sm text-theme-text focus:outline-none focus:border-theme-accent"
+              >
+                {availableYears.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-theme-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2 mt-2 text-xs text-theme-muted justify-end">
+
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-1.5 min-w-max">
+            {heatmapData.map((col, colIdx) => (
+              <div key={colIdx} className="flex flex-col gap-1.5">
+                {col.map((day, rowIdx) => {
+                  if (!day) {
+                    return <div key={`empty-${rowIdx}`} className="w-4 h-4 rounded-sm bg-transparent" />;
+                  }
+                  return (
+                    <div 
+                      key={day.date}
+                      className={cn(
+                        "w-4 h-4 rounded-sm transition-colors duration-300 relative cursor-pointer",
+                        day.count === 0 ? 'bg-theme-border/50' :
+                        day.count < day.scheduledCount ? 'bg-theme-accent/40' :
+                        'bg-theme-accent shadow-[0_0_8px_var(--accent-color)]'
+                      )}
+                      onMouseEnter={(e) => {
+                        setHoveredDay({
+                          ...day,
+                          rect: e.currentTarget.getBoundingClientRect()
+                        });
+                      }}
+                      onMouseLeave={() => setHoveredDay(null)}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 mt-4 text-xs text-theme-muted justify-end">
           <span>Less</span>
           <div className="w-3 h-3 rounded-sm bg-theme-border/50" />
           <div className="w-3 h-3 rounded-sm bg-theme-accent/40" />
-          <div className="w-3 h-3 rounded-sm bg-theme-accent" />
+          <div className="w-3 h-3 rounded-sm bg-theme-accent shadow-[0_0_8px_var(--accent-color)]" />
           <span>More</span>
         </div>
       </div>
+
+      {hoveredDay && createPortal(
+        <div 
+          className="fixed z-[100] flex flex-col items-center pointer-events-none w-max bg-theme-bg border border-theme-border rounded-lg px-3 py-2 shadow-xl"
+          style={{
+            top: hoveredDay.rect.top - 8,
+            left: hoveredDay.rect.left + hoveredDay.rect.width / 2,
+            transform: 'translate(-50%, -100%)'
+          }}
+        >
+          <span className="text-xs font-medium text-theme-text mb-1">{hoveredDay.displayDate}</span>
+          <div className="text-xs text-theme-muted">
+            {hoveredDay.count} / {hoveredDay.scheduledCount} Tasks Completed
+          </div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-theme-bg" />
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
+
