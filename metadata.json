@@ -1,0 +1,6 @@
+{
+  "name": "Habitto",
+  "description": "A standalone client-side YouTube Upload Habit Tracker designed for creators to stay consistent across multiple channels.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

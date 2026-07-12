@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist", ui-monospace, SFMono-Regular, monospace;
+
+  --color-theme-bg: var(--bg-color);
+  --color-theme-surface: var(--surface-color);
+  --color-theme-text: var(--text-primary);
+  --color-theme-muted: var(--text-secondary);
+  --color-theme-border: var(--border-color);
+  --color-theme-accent: rgb(var(--accent-rgb));
+}
+
+:root {
+  --bg-color: #fafafa;
+  --surface-color: #ffffff;
+  --text-primary: #09090b;
+  --text-secondary: #71717a;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --accent-rgb: 221 183 255;
+}
+
+:root.dark {
+  --bg-color: #09090b; 
+  --surface-color: #121214;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Hide scrollbar for cleaner UI */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
