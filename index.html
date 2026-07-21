@@ -4,11 +4,33 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Habitto</title>
+    <script>
+      (function() {
+        try {
+          var state = localStorage.getItem('habit-tracker-data');
+          if (state) {
+            var parsed = JSON.parse(state);
+            var isDark = parsed.state && parsed.state.themeMode === 'dark';
+            if (isDark) {
+              document.documentElement.classList.add('dark');
+            } else if (parsed.state && parsed.state.themeMode === 'light') {
+              document.documentElement.classList.remove('dark');
+            } else {
+              document.documentElement.classList.add('dark');
+            }
+          } else {
+            // Default to dark mode
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          // Default to dark mode if error
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
-
