@@ -106,8 +106,8 @@ export function Settings() {
         <p className="text-theme-muted">Manage your data and preferences.</p>
       </div>
 
-      <div className="bg-theme-surface border border-theme-border rounded-3xl overflow-hidden shadow-sm">
-        <div className="p-6 md:p-8 border-b border-theme-border">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, staggerChildren: 0.1 }} className="bg-theme-surface border border-theme-border rounded-3xl overflow-hidden shadow-sm">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="p-6 md:p-8 border-b border-theme-border">
           <h2 className="text-xl font-medium text-theme-text mb-6 flex items-center gap-2">
             <Palette className="w-5 h-5 text-theme-accent" />
             Appearance
@@ -199,30 +199,34 @@ export function Settings() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="p-6 md:p-8 border-b border-theme-border">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="p-6 md:p-8 border-b border-theme-border">
           <h2 className="text-xl font-medium text-theme-text mb-4">Data Management</h2>
           <p className="text-theme-muted mb-6 max-w-xl leading-relaxed">
             All your data is stored locally in this browser. To back up your data or move it to another device, use the export and import tools below.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4">
-            <button 
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={handleExport}
-              className="flex items-center justify-center gap-2 bg-theme-accent/10 text-theme-accent border border-theme-accent/20 px-6 py-3 rounded-full hover:bg-theme-accent/20 transition-colors font-medium active:scale-95"
+              className="flex items-center justify-center gap-2 bg-theme-accent/10 text-theme-accent border border-theme-accent/20 px-6 py-3 rounded-full hover:bg-theme-accent/20 transition-colors font-medium"
             >
               <Download className="w-5 h-5" />
               <span>Export Backup</span>
-            </button>
+            </motion.button>
             
-            <button 
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center justify-center gap-2 bg-theme-bg text-theme-text border border-theme-border px-6 py-3 rounded-full hover:bg-theme-border transition-colors font-medium active:scale-95"
+              className="flex items-center justify-center gap-2 bg-theme-bg text-theme-text border border-theme-border px-6 py-3 rounded-full hover:bg-theme-border transition-colors font-medium"
             >
               <Upload className="w-5 h-5" />
               <span>Import Backup</span>
-            </button>
+            </motion.button>
             <input 
               type="file" 
               accept=".json"
@@ -231,9 +235,9 @@ export function Settings() {
               className="hidden"
             />
           </div>
-        </div>
+        </motion.div>
         
-        <div className="p-6 md:p-8 bg-red-500/5">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="p-6 md:p-8 bg-red-500/5">
           <div className="flex gap-4 items-start">
             <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0 mt-1">
               <AlertCircle className="w-5 h-5 text-red-500" />
@@ -243,17 +247,19 @@ export function Settings() {
               <p className="text-red-500/70 mb-4 max-w-xl leading-relaxed">
                 Clearing your data will permanently remove all tasks, channels, and upload history from this browser. Please export a backup first if you want to keep your records.
               </p>
-              <button 
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setIsClearModalOpen(true)}
-                className="flex items-center justify-center gap-2 bg-red-500/10 text-red-500 border border-red-500/20 px-6 py-2.5 rounded-full hover:bg-red-500/20 transition-colors font-medium active:scale-95"
+                className="flex items-center justify-center gap-2 bg-red-500/10 text-red-500 border border-red-500/20 px-6 py-2.5 rounded-full hover:bg-red-500/20 transition-colors font-medium"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Clear All Data</span>
-              </button>
+              </motion.button>
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Clear Data Modal */}
       <AnimatePresence>

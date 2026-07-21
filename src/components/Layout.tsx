@@ -82,26 +82,27 @@ export function Layout() {
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                title={isSidebarCollapsed ? item.name : undefined}
-                className={cn(
-                  "flex items-center rounded-xl transition-all duration-200 group relative overflow-hidden",
-                  isSidebarCollapsed ? "justify-center p-3" : "gap-3 px-4 py-3",
-                  isActive 
-                    ? "text-theme-accent bg-theme-accent/5" 
-                    : "text-theme-muted hover:bg-theme-border hover:text-theme-text"
-                )}
-              >
+              <motion.div key={item.path} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Link
+                  to={item.path}
+                  title={isSidebarCollapsed ? item.name : undefined}
+                  className={cn(
+                    "flex items-center rounded-xl transition-all duration-300 group relative overflow-hidden",
+                    isSidebarCollapsed ? "justify-center p-3" : "gap-3 px-4 py-3",
+                    isActive
+                      ? "text-theme-accent bg-theme-accent/5"
+                      : "text-theme-muted hover:bg-theme-accent/5 hover:text-theme-text"
+                  )}
+                >
                 {isActive && (
                   <motion.div layoutId="active-nav-bg" className="absolute inset-0 bg-theme-accent/10 border border-theme-accent/20 rounded-xl" />
                 )}
                 <item.icon className={cn("w-5 h-5 relative z-10 transition-colors shrink-0", isActive ? "text-theme-accent" : "group-hover:text-theme-text")} />
                 {!isSidebarCollapsed && (
-                  <span className="font-medium relative z-10 whitespace-nowrap">{item.name}</span>
-                )}
-              </Link>
+                    <span className="font-medium relative z-10 whitespace-nowrap">{item.name}</span>
+                  )}
+                </Link>
+              </motion.div>
             )
           })}
         </nav>
@@ -168,13 +169,14 @@ export function Layout() {
         </AnimatePresence>
 
         <div className="flex-1 p-4 md:p-8 lg:p-10 max-w-7xl mx-auto w-full relative z-10 pb-32 md:pb-10">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, y: 15, filter: "blur(8px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -15, filter: "blur(8px)" }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full h-full"
             >
               <Outlet />
             </motion.div>

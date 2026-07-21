@@ -56,15 +56,17 @@ export function Tasks() {
               <p className="text-theme-muted">No tasks yet. Create one to get started.</p>
             </motion.div>
           )}
-          {tasks.map((task) => (
+          {tasks.map((task, index) => (
             <motion.div
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+              transition={{ duration: 0.4, delay: index * 0.05, type: 'spring', bounce: 0.2 }}
+              whileHover={{ scale: 1.01, y: -2 }}
               key={task.id}
               className={cn(
-                "bg-theme-surface border border-theme-border p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6",
+                "bg-theme-surface border border-theme-border p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm hover:shadow-lg transition-shadow duration-300",
                 task.archived && "opacity-50 grayscale"
               )}
             >
@@ -129,12 +131,13 @@ export function Tasks() {
         {taskToDelete && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
               onClick={() => setTaskToDelete(null)}
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", bounce: 0.3 }}
               className="relative bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl"
             >
               <h2 className="text-xl font-medium text-theme-text mb-4">Delete Task?</h2>
@@ -230,12 +233,13 @@ function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, edit
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <motion.div 
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
         onClick={onClose}
       />
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ type: "spring", bounce: 0.25 }}
         className="relative bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]"
       >
         <h2 className="text-2xl font-light text-theme-text mb-6">{editingTask ? 'Edit Task' : 'New Task'}</h2>
