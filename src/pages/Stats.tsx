@@ -5,6 +5,7 @@ import { format, subDays, eachDayOfInterval, startOfYear, endOfYear, startOfMont
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Flame, Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import { isTaskScheduledOnDate, cn } from "../lib/utils";
+import { motion } from "framer-motion";
 
 export function Stats() {
   const tasks = useStore((state) => state.tasks);
@@ -154,8 +155,8 @@ export function Stats() {
         <p className="text-theme-muted">Track your consistency over time.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center relative overflow-hidden">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, staggerChildren: 0.1 }} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <motion.div whileHover={{ scale: 1.02, y: -4 }} className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center relative overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300">
           <div className="absolute top-0 right-0 p-6 opacity-10">
             <Flame className="w-24 h-24 text-orange-500" />
           </div>
@@ -164,20 +165,20 @@ export function Stats() {
             <span className="font-medium tracking-wide uppercase text-sm">Current Streak</span>
           </div>
           <div className="text-5xl font-light text-theme-text">{streak} <span className="text-xl text-theme-muted">days</span></div>
-        </div>
+        </motion.div>
         
-        <div className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center">
+        <motion.div whileHover={{ scale: 1.02, y: -4 }} className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center shadow-sm hover:shadow-xl transition-shadow duration-300">
           <div className="text-theme-muted font-medium tracking-wide uppercase text-sm mb-2">Total Completed</div>
           <div className="text-5xl font-light text-theme-text">{completions.length}</div>
-        </div>
+        </motion.div>
 
-        <div className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center">
+        <motion.div whileHover={{ scale: 1.02, y: -4 }} className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center shadow-sm hover:shadow-xl transition-shadow duration-300">
           <div className="text-theme-muted font-medium tracking-wide uppercase text-sm mb-2">Active Tasks</div>
           <div className="text-5xl font-light text-theme-text">{tasks.filter(t => !t.archived).length}</div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8 shadow-sm hover:shadow-md transition-shadow duration-300">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 className="text-lg font-light text-theme-text">Activity (Last 30 Days)</h2>
           <div className="relative">
@@ -214,9 +215,9 @@ export function Stats() {
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8 shadow-sm hover:shadow-md transition-shadow duration-300">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 className="text-lg font-light text-theme-text">Consistency Map</h2>
           
@@ -259,8 +260,9 @@ export function Stats() {
                     return <div key={`empty-${rowIdx}`} className="w-4 h-4 rounded-sm bg-transparent" />;
                   }
                   return (
-                    <div 
+                    <motion.div
                       key={day.date}
+                      whileHover={{ scale: 1.3, zIndex: 10 }}
                       className={cn(
                         "w-4 h-4 rounded-sm transition-colors duration-300 relative cursor-pointer",
                         day.count === 0 ? 'bg-theme-border/50' :
@@ -289,7 +291,7 @@ export function Stats() {
           <div className="w-3 h-3 rounded-sm bg-theme-accent shadow-[0_0_8px_var(--accent-color)]" />
           <span>More</span>
         </div>
-      </div>
+      </motion.div>
 
       {hoveredDay && createPortal(
         <div 
