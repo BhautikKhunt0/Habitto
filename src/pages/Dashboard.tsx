@@ -104,8 +104,8 @@ export function Dashboard() {
       <div className="flex-1 w-full space-y-8">
         
         {/* Progress Bento */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, staggerChildren: 0.1 }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <motion.div whileHover={{ scale: 1.02, y: -4 }} className="bg-theme-surface border border-theme-border rounded-3xl p-6 flex items-center gap-6 relative overflow-hidden group shadow-sm hover:shadow-xl transition-shadow duration-300">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 flex items-center gap-6 relative overflow-hidden group">
             <div className="absolute inset-0 bg-theme-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
@@ -130,9 +130,9 @@ export function Dashboard() {
                 {progressPercent === 100 ? "Perfect month!" : progressPercent > 70 ? "On track." : "Keep pushing."}
               </p>
             </div>
-          </motion.div>
+          </div>
           
-          <motion.div whileHover={{ scale: 1.02, y: -4 }} className="bg-theme-surface border border-theme-border rounded-3xl p-6 flex items-center relative overflow-hidden group shadow-sm hover:shadow-xl transition-shadow duration-300">
+          <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 flex items-center relative overflow-hidden group">
              <div className="absolute top-0 left-0 w-1 h-full bg-theme-accent/30" />
              <div className="pl-4 relative z-10 w-full flex flex-col justify-center">
                {isEditingQuote ? (
@@ -161,11 +161,11 @@ export function Dashboard() {
                  </blockquote>
                )}
              </div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Calendar */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="bg-transparent mt-8">
+        <div className="bg-transparent mt-8">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-3xl font-light tracking-wide text-theme-text">
               {format(currentMonth, 'MMMM')}
@@ -249,11 +249,11 @@ export function Dashboard() {
               );
             })}
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Right Sidebar: Selected Date Tasks */}
-      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="w-full xl:w-96 shrink-0 bg-transparent xl:sticky xl:top-6">
+      <div className="w-full xl:w-96 shrink-0 bg-transparent xl:sticky xl:top-6">
         <div className="mb-8">
           <h2 className="text-2xl font-light tracking-wide text-theme-text mb-1">
             {isToday(selectedDate) ? "Today's Focus" : format(selectedDate, 'EEEE, MMM d')}
@@ -280,7 +280,7 @@ export function Dashboard() {
             })}
           </AnimatePresence>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
