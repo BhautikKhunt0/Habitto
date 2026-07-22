@@ -13,6 +13,7 @@ function DockIcon({
   mouseY,
   animationsEnabled 
 }: { 
+  key?: string,
   item: any, 
   isActive: boolean, 
   isSidebarCollapsed: boolean, 
