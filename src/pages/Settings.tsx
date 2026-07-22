@@ -106,7 +106,7 @@ export function Settings() {
         <p className="text-theme-muted">Manage your data and preferences.</p>
       </div>
 
-      <div className="bg-theme-surface border border-theme-border rounded-3xl overflow-hidden shadow-sm">
+      <div className="bg-theme-surface border border-theme-border rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-theme-accent/30">
         <div className="p-6 md:p-8 border-b border-theme-border">
           <h2 className="text-xl font-medium text-theme-text mb-6 flex items-center gap-2">
             <Palette className="w-5 h-5 text-theme-accent" />

@@ -62,10 +62,11 @@ export function Tasks() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              whileHover={{ scale: 1.01, translateY: -2 }}
               key={task.id}
               className={cn(
-                "bg-theme-surface border border-theme-border p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6",
-                task.archived && "opacity-50 grayscale"
+                "bg-theme-surface border border-theme-border p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-theme-accent/30",
+                task.archived && "opacity-50 grayscale hover:scale-100 hover:translate-y-0 hover:shadow-none"
               )}
             >
               <div className="flex items-start gap-4">

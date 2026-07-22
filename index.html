@@ -3,6 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      try {
+        const data = localStorage.getItem('habit-tracker-data');
+        if (data) {
+          const parsed = JSON.parse(data);
+          const state = parsed.state;
+          if (state && state.themeMode === 'light') {
+            document.documentElement.classList.remove('dark');
+          } else {
+            document.documentElement.classList.add('dark');
+          }
+        } else {
+          document.documentElement.classList.add('dark'); // Default to dark mode
+        }
+      } catch (e) {
+        document.documentElement.classList.add('dark');
+      }
+    </script>
     <title>Habitto</title>
   </head>
   <body>

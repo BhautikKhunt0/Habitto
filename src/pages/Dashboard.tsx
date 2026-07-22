@@ -105,7 +105,7 @@ export function Dashboard() {
         
         {/* Progress Bento */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 flex items-center gap-6 relative overflow-hidden group">
+          <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 flex items-center gap-6 relative overflow-hidden group hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-theme-accent/30 transition-all duration-300">
             <div className="absolute inset-0 bg-theme-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
@@ -132,8 +132,8 @@ export function Dashboard() {
             </div>
           </div>
           
-          <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 flex items-center relative overflow-hidden group">
-             <div className="absolute top-0 left-0 w-1 h-full bg-theme-accent/30" />
+          <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 flex items-center relative overflow-hidden group hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-theme-accent/30 transition-all duration-300">
+             <div className="absolute top-0 left-0 w-1 h-full bg-theme-accent/30 group-hover:bg-theme-accent transition-colors duration-300" />
              <div className="pl-4 relative z-10 w-full flex flex-col justify-center">
                {isEditingQuote ? (
                  <textarea
@@ -292,13 +292,13 @@ function TaskItem({ task, isCompleted, onToggle }: { key?: string | number, task
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ scale: 1.02, translateY: -2 }}
       whileTap={{ scale: 0.98 }}
       className={cn(
-        "flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-colors border",
+        "flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 border",
         isCompleted 
           ? "bg-theme-surface border-theme-border/50 opacity-60" 
-          : "bg-theme-surface border-theme-border hover:border-theme-accent/30 hover:bg-theme-accent/5"
+          : "bg-theme-surface border-theme-border hover:border-theme-accent/30 hover:bg-theme-accent/5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.1)]"
       )}
     >
       <div className="relative flex items-center justify-center shrink-0">

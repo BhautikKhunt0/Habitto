@@ -155,29 +155,29 @@ export function Stats() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-6 opacity-10">
+        <div className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center relative overflow-hidden transition-all duration-300 hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-orange-500/30 group">
+          <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500">
             <Flame className="w-24 h-24 text-orange-500" />
           </div>
           <div className="flex items-center gap-2 text-orange-500 mb-2">
             <Flame className="w-5 h-5" />
             <span className="font-medium tracking-wide uppercase text-sm">Current Streak</span>
           </div>
-          <div className="text-5xl font-light text-theme-text">{streak} <span className="text-xl text-theme-muted">days</span></div>
+          <div className="text-5xl font-light text-theme-text relative z-10">{streak} <span className="text-xl text-theme-muted">days</span></div>
         </div>
         
-        <div className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center">
+        <div className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center transition-all duration-300 hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-theme-accent/30">
           <div className="text-theme-muted font-medium tracking-wide uppercase text-sm mb-2">Total Completed</div>
           <div className="text-5xl font-light text-theme-text">{completions.length}</div>
         </div>
 
-        <div className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center">
+        <div className="bg-theme-surface border border-theme-border rounded-3xl p-8 flex flex-col justify-center transition-all duration-300 hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-theme-accent/30">
           <div className="text-theme-muted font-medium tracking-wide uppercase text-sm mb-2">Active Tasks</div>
           <div className="text-5xl font-light text-theme-text">{tasks.filter(t => !t.archived).length}</div>
         </div>
       </div>
 
-      <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8">
+      <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8 transition-all duration-300 hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-theme-accent/30">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 className="text-lg font-light text-theme-text">Activity (Last 30 Days)</h2>
           <div className="relative">
@@ -216,7 +216,7 @@ export function Stats() {
         </div>
       </div>
 
-      <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8">
+      <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8 transition-all duration-300 hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-theme-accent/30">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 className="text-lg font-light text-theme-text">Consistency Map</h2>
           
@@ -293,18 +293,22 @@ export function Stats() {
 
       {hoveredDay && createPortal(
         <div 
-          className="fixed z-[100] flex flex-col items-center pointer-events-none w-max bg-theme-bg border border-theme-border rounded-lg px-3 py-2 shadow-xl"
+          className="fixed z-[100] flex flex-col pointer-events-none w-max bg-theme-bg border border-theme-border rounded-lg px-3 py-2 shadow-xl"
           style={{
-            top: hoveredDay.rect.top - 8,
-            left: hoveredDay.rect.left + hoveredDay.rect.width / 2,
-            transform: 'translate(-50%, -100%)'
+            top: hoveredDay.rect.top < 60 ? hoveredDay.rect.bottom + 8 : hoveredDay.rect.top - 8,
+            left: Math.max(10, Math.min(window.innerWidth - 150, hoveredDay.rect.left + hoveredDay.rect.width / 2)),
+            transform: hoveredDay.rect.top < 60 ? 'translate(-50%, 0)' : 'translate(-50%, -100%)'
           }}
         >
-          <span className="text-xs font-medium text-theme-text mb-1">{hoveredDay.displayDate}</span>
-          <div className="text-xs text-theme-muted">
+          <span className="text-xs font-medium text-theme-text mb-1 text-center">{hoveredDay.displayDate}</span>
+          <div className="text-xs text-theme-muted text-center">
             {hoveredDay.count} / {hoveredDay.scheduledCount} Tasks Completed
           </div>
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-theme-bg" />
+          {hoveredDay.rect.top >= 60 ? (
+            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-theme-bg" />
+          ) : (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-[1px] border-[6px] border-transparent border-b-theme-bg" />
+          )}
         </div>,
         document.body
       )}

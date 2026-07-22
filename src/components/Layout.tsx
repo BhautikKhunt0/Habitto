@@ -58,14 +58,14 @@ export function Layout() {
         <div className={cn("flex items-center mt-6 mb-10 transition-all duration-300", isSidebarCollapsed ? "justify-center px-4" : "gap-3 px-6")}>
           <button 
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="group relative w-10 h-10 rounded-xl bg-theme-accent flex items-center justify-center shadow-lg shadow-theme-accent/20 shrink-0 overflow-hidden cursor-pointer hover:scale-105 transition-transform"
+            className="group relative w-10 h-10 rounded-xl bg-theme-accent flex items-center justify-center shadow-lg shadow-theme-accent/20 shrink-0 overflow-hidden cursor-pointer hover:scale-105 transition-transform duration-300"
             title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <CheckSquare className={cn("w-5 h-5 text-theme-bg transition-opacity duration-200 absolute", "group-hover:opacity-0")} />
+            <CheckSquare className={cn("w-5 h-5 text-theme-bg transition-all duration-300 absolute", "group-hover:opacity-0 group-hover:scale-50")} />
             {isSidebarCollapsed ? (
-              <ChevronRight className={cn("w-6 h-6 text-theme-bg opacity-0 transition-opacity duration-200 absolute", "group-hover:opacity-100")} />
+              <ChevronRight className={cn("w-6 h-6 text-theme-bg opacity-0 scale-50 transition-all duration-300 absolute", "group-hover:opacity-100 group-hover:scale-100")} />
             ) : (
-              <ChevronLeft className={cn("w-6 h-6 text-theme-bg opacity-0 transition-opacity duration-200 absolute", "group-hover:opacity-100")} />
+              <ChevronLeft className={cn("w-6 h-6 text-theme-bg opacity-0 scale-50 transition-all duration-300 absolute", "group-hover:opacity-100 group-hover:scale-100")} />
             )}
           </button>
           {!isSidebarCollapsed && (
@@ -168,13 +168,13 @@ export function Layout() {
         </AnimatePresence>
 
         <div className="flex-1 p-4 md:p-8 lg:p-10 max-w-7xl mx-auto w-full relative z-10 pb-32 md:pb-10">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
             >
               <Outlet />
             </motion.div>
