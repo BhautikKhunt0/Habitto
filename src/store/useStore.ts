@@ -18,12 +18,14 @@ interface StoreState extends AppData {
   themeId: string;
   customThemes: CustomTheme[];
   quote: string;
+  animationsEnabled: boolean;
   setThemeMode: (mode: 'light' | 'dark') => void;
   setThemeColor: (color: string) => void;
   setThemeId: (id: string) => void;
   addCustomTheme: (theme: CustomTheme) => void;
   deleteCustomTheme: (id: string) => void;
   setQuote: (quote: string) => void;
+  setAnimationsEnabled: (enabled: boolean) => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'archived'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string, keepHistory: boolean) => void;
@@ -43,6 +45,7 @@ export const useStore = create<StoreState>()(
       themeColor: '#ddb7ff',
       themeId: 'purple',
       customThemes: [],
+      animationsEnabled: true,
       
       setThemeMode: (themeMode) => set({ themeMode }),
       setThemeColor: (themeColor) => set({ themeColor }),
@@ -50,6 +53,7 @@ export const useStore = create<StoreState>()(
       addCustomTheme: (theme) => set((state) => ({ customThemes: [...state.customThemes, theme] })),
       deleteCustomTheme: (id) => set((state) => ({ customThemes: state.customThemes.filter(t => t.id !== id) })),
       setQuote: (quote) => set({ quote }),
+      setAnimationsEnabled: (animationsEnabled) => set({ animationsEnabled }),
 
       addTask: (taskData) => set((state) => ({
         tasks: [
@@ -95,6 +99,7 @@ export const useStore = create<StoreState>()(
         themeColor: data.themeColor || '#ddb7ff',
         themeId: data.themeId || 'purple',
         customThemes: data.customThemes || [],
+        animationsEnabled: data.animationsEnabled !== undefined ? data.animationsEnabled : true,
       })),
 
       clearData: () => set(() => ({ tasks: [], completions: [] }))

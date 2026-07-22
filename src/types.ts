@@ -7,7 +7,8 @@ export type Frequency =
 export interface Task {
   id: string;
   name: string;
-  channelName?: string;
+  category?: string; // replacing channelName
+  channelName?: string; // deprecated, for backward compatibility
   color: string;
   icon?: string;
   frequency: Frequency;
@@ -38,4 +39,5 @@ export interface AppData {
   themeColor?: string;
   themeId?: string;
   customThemes?: CustomTheme[];
+  animationsEnabled?: boolean;
 }

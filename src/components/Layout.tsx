@@ -1,9 +1,81 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { LayoutDashboard, CheckSquare, BarChart2, Settings, Menu, X, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { cn, hexToRgb } from "../lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useStore, DEFAULT_THEMES } from "../store/useStore";
+
+// --- Dock Icon Component ---
+function DockIcon({ 
+  item, 
+  isActive, 
+  isSidebarCollapsed, 
+  mouseY,
+  animationsEnabled 
+}: { 
+  item: any, 
+  isActive: boolean, 
+  isSidebarCollapsed: boolean, 
+  mouseY: any,
+  animationsEnabled: boolean
+}) {
+  const ref = useRef<HTMLAnchorElement>(null);
+  
+  // Calculate distance from mouse
+  const distance = useTransform(mouseY, (val: number) => {
+    if (!ref.current || !isSidebarCollapsed || !animationsEnabled) return 0;
+    const bounds = ref.current.getBoundingClientRect();
+    const iconCenter = bounds.top + bounds.height / 2;
+    return val - iconCenter;
+  });
+  
+  // Map distance to scale (bell curve)
+  const scaleRaw = useTransform(distance, [-150, 0, 150], [1, 1.4, 1]);
+  const scale = useSpring(scaleRaw, { mass: 0.1, stiffness: 300, damping: 20 });
+  const yRaw = useTransform(distance, [-150, 0, 150], [0, -4, 0]);
+  const y = useSpring(yRaw, { mass: 0.1, stiffness: 300, damping: 20 });
+
+  return (
+    <motion.div
+      style={isSidebarCollapsed && animationsEnabled ? { scale, y } : {}}
+      whileHover={!isSidebarCollapsed && animationsEnabled ? { scale: 1.02 } : {}}
+      whileTap={animationsEnabled ? { scale: 0.95 } : {}}
+      className="relative group z-10 hover:z-50"
+    >
+      <Link
+        ref={ref}
+        to={item.path}
+        className={cn(
+          "flex items-center rounded-2xl transition-colors duration-200 relative",
+          isSidebarCollapsed ? "justify-center p-3" : "gap-3 px-4 py-3",
+          isActive 
+            ? "text-theme-accent bg-theme-accent/5 shadow-[inset_0_1px_4px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_4px_rgba(0,0,0,0.2)]" 
+            : "text-theme-muted hover:bg-theme-border/50 hover:text-theme-text"
+        )}
+      >
+        {isActive && (
+          <motion.div layoutId="active-nav-bg" transition={animationsEnabled ? undefined : { duration: 0 }} className="absolute inset-0 bg-theme-accent/10 border border-theme-accent/20 rounded-2xl" />
+        )}
+        <item.icon className={cn("w-5 h-5 relative z-10 transition-colors shrink-0", isActive ? "text-theme-accent" : "group-hover:text-theme-text")} />
+        {!isSidebarCollapsed && (
+          <span className="font-medium relative z-10 whitespace-nowrap">{item.name}</span>
+        )}
+      </Link>
+
+      {/* Custom Tooltip for Collapsed Mode */}
+      {isSidebarCollapsed && (
+        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 pointer-events-none opacity-0 translate-x-[-10px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 z-50">
+          <div className="bg-theme-surface border border-theme-border text-theme-text text-sm font-medium px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap relative">
+            {item.name}
+            <div className="absolute top-1/2 -left-[5px] -translate-y-1/2 border-[5px] border-transparent border-r-theme-border" />
+            <div className="absolute top-1/2 -left-[4px] -translate-y-1/2 border-[5px] border-transparent border-r-theme-surface" />
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+// ---------------------------
 
 export function Layout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -13,8 +85,28 @@ export function Layout() {
   const themeMode = useStore(state => state.themeMode);
   const themeId = useStore(state => state.themeId);
   const customThemes = useStore(state => state.customThemes);
+  const animationsEnabled = useStore(state => state.animationsEnabled);
   // fallback for backward compatibility
   const themeColorState = useStore(state => state.themeColor);
+
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [displayLocation, setDisplayLocation] = useState(location);
+  const mouseY = useMotionValue(Infinity);
+
+  useEffect(() => {
+    if (location.pathname !== displayLocation.pathname) {
+      if (!animationsEnabled) {
+        setDisplayLocation(location);
+        return;
+      }
+      setIsNavigating(true);
+      const timer = setTimeout(() => {
+        setDisplayLocation(location);
+        setIsNavigating(false);
+      }, 500); // Show loading effect for 500ms
+      return () => clearTimeout(timer);
+    }
+  }, [location, displayLocation, animationsEnabled]);
 
   const activeColor = useMemo(() => {
     const allThemes = [...DEFAULT_THEMES, ...customThemes];
@@ -78,30 +170,22 @@ export function Layout() {
           )}
         </div>
 
-        <nav className="flex-1 space-y-2 px-3 mt-4">
+        <nav 
+          className="flex-1 space-y-3 px-3 mt-4"
+          onMouseMove={(e) => mouseY.set(e.clientY)}
+          onMouseLeave={() => mouseY.set(Infinity)}
+        >
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
-              <Link
+              <DockIcon
                 key={item.path}
-                to={item.path}
-                title={isSidebarCollapsed ? item.name : undefined}
-                className={cn(
-                  "flex items-center rounded-xl transition-all duration-200 group relative overflow-hidden",
-                  isSidebarCollapsed ? "justify-center p-3" : "gap-3 px-4 py-3",
-                  isActive 
-                    ? "text-theme-accent bg-theme-accent/5" 
-                    : "text-theme-muted hover:bg-theme-border hover:text-theme-text"
-                )}
-              >
-                {isActive && (
-                  <motion.div layoutId="active-nav-bg" className="absolute inset-0 bg-theme-accent/10 border border-theme-accent/20 rounded-xl" />
-                )}
-                <item.icon className={cn("w-5 h-5 relative z-10 transition-colors shrink-0", isActive ? "text-theme-accent" : "group-hover:text-theme-text")} />
-                {!isSidebarCollapsed && (
-                  <span className="font-medium relative z-10 whitespace-nowrap">{item.name}</span>
-                )}
-              </Link>
+                item={item}
+                isActive={isActive}
+                isSidebarCollapsed={isSidebarCollapsed}
+                mouseY={mouseY}
+                animationsEnabled={animationsEnabled}
+              />
             )
           })}
         </nav>
@@ -169,17 +253,58 @@ export function Layout() {
 
         <div className="flex-1 p-4 md:p-8 lg:p-10 max-w-7xl mx-auto w-full relative z-10 pb-32 md:pb-10">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-            >
-              <Outlet />
-            </motion.div>
+            {!isNavigating && (
+              <motion.div
+                key={location.pathname}
+                initial={animationsEnabled ? { opacity: 0, y: 5 } : { opacity: 1, y: 0 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={animationsEnabled ? { opacity: 0, y: -5 } : { opacity: 1, y: 0 }}
+                transition={animationsEnabled ? { duration: 0.3, ease: "easeOut" } : { duration: 0 }}
+              >
+                <Outlet />
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
+
+        {/* Page Transition Loading Overlay */}
+        <AnimatePresence>
+          {isNavigating && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="fixed inset-0 z-[999] bg-theme-bg flex flex-col items-center justify-center pointer-events-none"
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="flex flex-col items-center gap-4"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-theme-accent flex items-center justify-center shadow-lg shadow-theme-accent/30 relative overflow-hidden">
+                  <motion.div 
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "100%" }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-white/20 w-1/2 -skew-x-12"
+                  />
+                  <CheckSquare className="w-8 h-8 text-theme-bg relative z-10" />
+                </div>
+                <motion.h1 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="text-2xl font-medium tracking-tight text-theme-text"
+                >
+                  Habitto
+                </motion.h1>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

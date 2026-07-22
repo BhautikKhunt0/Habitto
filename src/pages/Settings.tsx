@@ -15,6 +15,7 @@ export function Settings() {
   const themeId = useStore((state) => state.themeId);
   const customThemes = useStore((state) => state.customThemes);
   const quote = useStore((state) => state.quote);
+  const animationsEnabled = useStore((state) => state.animationsEnabled);
   
   const importData = useStore((state) => state.importData);
   const clearData = useStore((state) => state.clearData);
@@ -22,6 +23,7 @@ export function Settings() {
   const setThemeId = useStore((state) => state.setThemeId);
   const addCustomTheme = useStore((state) => state.addCustomTheme);
   const deleteCustomTheme = useStore((state) => state.deleteCustomTheme);
+  const setAnimationsEnabled = useStore((state) => state.setAnimationsEnabled);
 
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isAddThemeModalOpen, setIsAddThemeModalOpen] = useState(false);
@@ -38,6 +40,7 @@ export function Settings() {
       themeId,
       customThemes,
       quote,
+      animationsEnabled,
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -202,6 +205,35 @@ export function Settings() {
         </div>
 
         <div className="p-6 md:p-8 border-b border-theme-border">
+          <h2 className="text-xl font-medium text-theme-text mb-6 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-theme-accent"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            Preferences
+          </h2>
+          
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <div className="font-medium text-theme-text">Enable UI Animations</div>
+              <div className="text-sm text-theme-muted mt-1">Show fluid transitions and macOS-style dock effects</div>
+            </div>
+            
+            <button
+              onClick={() => setAnimationsEnabled(!animationsEnabled)}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                animationsEnabled ? "bg-theme-accent" : "bg-theme-border"
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                  animationsEnabled ? "translate-x-6" : "translate-x-1"
+                )}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 md:p-8 border-b border-theme-border">
           <h2 className="text-xl font-medium text-theme-text mb-4">Data Management</h2>
           <p className="text-theme-muted mb-6 max-w-xl leading-relaxed">
             All your data is stored locally in this browser. To back up your data or move it to another device, use the export and import tools below.
@@ -241,7 +273,7 @@ export function Settings() {
             <div>
               <h3 className="text-lg font-medium text-red-500 mb-2">Danger Zone</h3>
               <p className="text-red-500/70 mb-4 max-w-xl leading-relaxed">
-                Clearing your data will permanently remove all tasks, channels, and upload history from this browser. Please export a backup first if you want to keep your records.
+                Clearing your data will permanently remove all tasks, categories, and completion history from this browser. Please export a backup first if you want to keep your records.
               </p>
               <button 
                 onClick={() => setIsClearModalOpen(true)}
@@ -269,7 +301,7 @@ export function Settings() {
               className="relative bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl"
             >
               <h2 className="text-xl font-medium text-theme-text mb-4">Clear all data?</h2>
-              <p className="text-theme-muted mb-8">This action cannot be undone. All tasks, channels, and completion history will be permanently deleted.</p>
+              <p className="text-theme-muted mb-8">This action cannot be undone. All tasks, categories, and completion history will be permanently deleted.</p>
               <div className="flex justify-end gap-3">
                 <button 
                   onClick={() => setIsClearModalOpen(false)}

@@ -328,10 +328,10 @@ function TaskItem({ task, isCompleted, onToggle }: { key?: string | number, task
         )}>
           {task.name}
         </h3>
-        {task.channelName && (
+        {(task.category || task.channelName) && (
           <div className="flex items-center gap-2 mt-0.5">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: task.color || 'var(--accent-color)' }} />
-            <span className="text-xs text-theme-muted truncate">{task.channelName}</span>
+            <span className="text-xs text-theme-muted truncate">{task.category || task.channelName}</span>
           </div>
         )}
       </div>

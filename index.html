@@ -9,10 +9,43 @@
         if (data) {
           const parsed = JSON.parse(data);
           const state = parsed.state;
-          if (state && state.themeMode === 'light') {
+          const isLight = state && state.themeMode === 'light';
+          
+          if (isLight) {
             document.documentElement.classList.remove('dark');
           } else {
             document.documentElement.classList.add('dark');
+          }
+
+          if (state && state.themeId) {
+             const DEFAULT_THEMES = [
+                { id: 'purple', lightColor: '#a855f7', darkColor: '#ddb7ff' },
+                { id: 'teal', lightColor: '#0d9488', darkColor: '#3cddc7' },
+                { id: 'orange', lightColor: '#ea580c', darkColor: '#fabc4e' },
+                { id: 'pink', lightColor: '#db2777', darkColor: '#ffb4ab' },
+                { id: 'blue', lightColor: '#2563eb', darkColor: '#93c5fd' },
+                { id: 'green', lightColor: '#16a34a', darkColor: '#86efac' },
+             ];
+             const customThemes = state.customThemes || [];
+             const allThemes = [...DEFAULT_THEMES, ...customThemes];
+             const theme = allThemes.find(t => t.id === state.themeId);
+             
+             let activeColor = null;
+             if (theme) {
+               activeColor = isLight ? theme.lightColor : theme.darkColor;
+             } else if (state.themeColor) {
+               activeColor = state.themeColor;
+             }
+
+             if (activeColor) {
+                const hex = activeColor.replace(/^#/, '');
+                if (hex.length === 6) {
+                  const r = parseInt(hex.substring(0, 2), 16);
+                  const g = parseInt(hex.substring(2, 4), 16);
+                  const b = parseInt(hex.substring(4, 6), 16);
+                  document.documentElement.style.setProperty('--accent-rgb', `${r} ${g} ${b}`);
+                }
+             }
           }
         } else {
           document.documentElement.classList.add('dark'); // Default to dark mode

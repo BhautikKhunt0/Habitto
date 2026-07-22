@@ -34,8 +34,8 @@ export function Tasks() {
     <div className="space-y-8 max-w-4xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-light tracking-wide text-theme-text mb-1">Tasks & Channels</h1>
-          <p className="text-theme-muted">Manage your recurring upload habits.</p>
+          <h1 className="text-3xl font-light tracking-wide text-theme-text mb-1">Routine Tasks</h1>
+          <p className="text-theme-muted">Manage your daily and recurring habits.</p>
         </div>
         <button 
           onClick={openNewTaskModal}
@@ -76,7 +76,7 @@ export function Tasks() {
                 <div>
                   <h3 className="text-xl font-medium text-theme-text mb-1">{task.name}</h3>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-theme-muted">
-                    {task.channelName && <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-theme-muted" /> {task.channelName}</span>}
+                    {(task.category || task.channelName) && <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-theme-muted" /> {task.category || task.channelName}</span>}
                     <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-theme-muted" /> {formatFrequency(task.frequency)}</span>
                     {task.archived && <span className="text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md text-xs">Archived</span>}
                   </div>
@@ -176,7 +176,7 @@ function formatFrequency(freq: Frequency): string {
 
 function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, editingTask: Task | null, onSave: (task: any) => void }) {
   const [name, setName] = useState(editingTask?.name || "");
-  const [channelName, setChannelName] = useState(editingTask?.channelName || "");
+  const [category, setCategory] = useState(editingTask?.category || editingTask?.channelName || "");
   const [color, setColor] = useState(editingTask?.color || "#a855f7");
   const [freqType, setFreqType] = useState<Frequency['type']>(editingTask?.frequency.type || 'daily');
   
@@ -212,7 +212,7 @@ function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, edit
 
     onSave({
       name: name.trim(),
-      channelName: channelName.trim(),
+      category: category.trim(),
       color,
       frequency
     });
@@ -257,13 +257,13 @@ function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, edit
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-theme-muted mb-1.5">Channel Name (Optional)</label>
+              <label className="block text-sm font-medium text-theme-muted mb-1.5">Category / User (Optional)</label>
               <input 
                 type="text" 
-                value={channelName}
-                onChange={e => setChannelName(e.target.value)}
+                value={category}
+                onChange={e => setCategory(e.target.value)}
                 className="w-full bg-theme-bg border border-theme-border rounded-xl px-4 py-3 text-theme-text focus:outline-none focus:border-theme-accent transition-colors"
-                placeholder="e.g. Marques Brownlee"
+                placeholder="e.g. Work, Health, or @John"
               />
             </div>
 
