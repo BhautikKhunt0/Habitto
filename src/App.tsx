@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { Tasks } from "./pages/Tasks";
@@ -12,29 +12,7 @@ import { useStore } from "./store/useStore";
 
 export default function App() {
   const animationsEnabled = useStore(state => state.animationsEnabled);
-  const themeMode = useStore(state => state.themeMode);
-  const themeColor = useStore(state => state.themeColor);
   const [isLoaded, setIsLoaded] = useState(!animationsEnabled);
-
-  useEffect(() => {
-    if (themeMode === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      document.documentElement.classList.add('dark');
-    }
-  }, [themeMode]);
-
-  useEffect(() => {
-    if (themeColor) {
-      const hex = themeColor.replace(/^#/, '');
-      if (hex.length === 6) {
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        document.documentElement.style.setProperty('--accent-rgb', `${r} ${g} ${b}`);
-      }
-    }
-  }, [themeColor]);
 
   useEffect(() => {
     if (!animationsEnabled) {
@@ -87,7 +65,7 @@ export default function App() {
       </AnimatePresence>
 
       {isLoaded && (
-        <HashRouter>
+        <BrowserRouter>
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
@@ -96,7 +74,7 @@ export default function App() {
               <Route path="settings" element={<Settings />} />
             </Route>
           </Routes>
-        </HashRouter>
+        </BrowserRouter>
       )}
     </>
   );

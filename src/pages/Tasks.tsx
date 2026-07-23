@@ -39,7 +39,7 @@ export function Tasks() {
         </div>
         <button 
           onClick={openNewTaskModal}
-          className="flex items-center gap-2 bg-theme-text text-theme-bg px-6 py-3 rounded-full hover:opacity-90 transition-opacity font-medium active:scale-95"
+          className="flex items-center gap-2 bg-theme-accent text-theme-bg px-6 py-3 rounded-full hover:bg-theme-accent/90 transition-colors font-medium active:scale-95"
         >
           <Plus className="w-5 h-5" />
           <span>New Task</span>
@@ -318,7 +318,7 @@ function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, edit
                       className={cn(
                         "w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors border",
                         selectedDays.includes(i)
-                          ? "bg-theme-accent/20 border-theme-accent/50 text-theme-accent"
+                          ? "bg-theme-accent border-theme-accent text-theme-bg"
                           : "bg-theme-bg border-theme-border text-theme-muted hover:bg-theme-border"
                       )}
                     >
@@ -377,7 +377,7 @@ function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, edit
             </button>
             <button 
               type="submit"
-              className="px-6 py-2.5 rounded-full bg-theme-text text-theme-bg hover:opacity-90 transition-opacity font-medium"
+              className="px-6 py-2.5 rounded-full bg-theme-accent text-theme-bg hover:bg-theme-accent/90 transition-colors font-medium"
             >
               Save Task
             </button>
