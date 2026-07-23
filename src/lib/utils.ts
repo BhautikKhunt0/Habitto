@@ -24,6 +24,14 @@ export function isTaskScheduledOnDate(task: Task, date: Date | string): boolean 
       return false;
   }
 
+  // If the task has an end date and the target date is after it, it's not scheduled.
+  if (task.endDate) {
+    const endDateStart = startOfDay(parseISO(task.endDate));
+    if (targetStart > endDateStart) {
+      return false;
+    }
+  }
+
   const { frequency } = task;
 
   switch (frequency.type) {

@@ -39,7 +39,7 @@ export function Tasks() {
         </div>
         <button 
           onClick={openNewTaskModal}
-          className="flex items-center gap-2 bg-theme-accent text-theme-bg px-6 py-3 rounded-full hover:bg-theme-accent/90 transition-colors font-medium active:scale-95"
+          className="flex items-center gap-2 bg-theme-text text-theme-bg px-6 py-3 rounded-full hover:opacity-90 transition-opacity font-medium active:scale-95"
         >
           <Plus className="w-5 h-5" />
           <span>New Task</span>
@@ -78,6 +78,7 @@ export function Tasks() {
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-theme-muted">
                     {(task.category || task.channelName) && <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-theme-muted" /> {task.category || task.channelName}</span>}
                     <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-theme-muted" /> {formatFrequency(task.frequency)}</span>
+                    {task.endDate && <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-theme-muted" /> Until {task.endDate}</span>}
                     {task.archived && <span className="text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md text-xs">Archived</span>}
                   </div>
                 </div>
@@ -179,6 +180,7 @@ function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, edit
   const [category, setCategory] = useState(editingTask?.category || editingTask?.channelName || "");
   const [color, setColor] = useState(editingTask?.color || "#a855f7");
   const [freqType, setFreqType] = useState<Frequency['type']>(editingTask?.frequency.type || 'daily');
+  const [endDate, setEndDate] = useState(editingTask?.endDate || "");
   
   // Weekly specific
   const [selectedDays, setSelectedDays] = useState<number[]>(
@@ -214,7 +216,8 @@ function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, edit
       name: name.trim(),
       category: category.trim(),
       color,
-      frequency
+      frequency,
+      ...(endDate ? { endDate } : {})
     });
   };
 
@@ -315,7 +318,7 @@ function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, edit
                       className={cn(
                         "w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors border",
                         selectedDays.includes(i)
-                          ? "bg-theme-accent border-theme-accent text-theme-bg"
+                          ? "bg-theme-accent/20 border-theme-accent/50 text-theme-accent"
                           : "bg-theme-bg border-theme-border text-theme-muted hover:bg-theme-border"
                       )}
                     >
@@ -350,6 +353,17 @@ function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, edit
                   </div>
                 </div>
               )}
+
+              <div className="mt-4 pt-4 border-t border-theme-border">
+                <label className="block text-sm font-medium text-theme-muted mb-1.5">End Date (Optional)</label>
+                <input 
+                  type="date" 
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="w-full bg-theme-bg border border-theme-border rounded-xl px-4 py-3 text-theme-text focus:outline-none focus:border-theme-accent transition-colors"
+                />
+                <p className="text-xs text-theme-muted mt-1.5">Task will no longer appear in your dashboard after this date.</p>
+              </div>
             </div>
           </div>
 
@@ -363,7 +377,7 @@ function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, edit
             </button>
             <button 
               type="submit"
-              className="px-6 py-2.5 rounded-full bg-theme-accent text-theme-bg hover:bg-theme-accent/90 transition-colors font-medium"
+              className="px-6 py-2.5 rounded-full bg-theme-text text-theme-bg hover:opacity-90 transition-opacity font-medium"
             >
               Save Task
             </button>

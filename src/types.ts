@@ -13,6 +13,7 @@ export interface Task {
   icon?: string;
   frequency: Frequency;
   createdAt: string;
+  endDate?: string; // "YYYY-MM-DD"
   archived: boolean;
   notes?: string;
 }
