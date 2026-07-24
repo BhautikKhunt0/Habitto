@@ -1,8 +1,10 @@
+"use client";
+
 import { MeasuringStrategy } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import React, { useState, useEffect, useCallback, forwardRef } from 'react';
-import { useStore } from '../store/useStore';
-import { KanbanTask } from '../types';
+import { useStore } from '@/app/store/useStore';
+import { KanbanTask } from '@/app/types';
 import { 
   DndContext, 
   DragOverlay, 
@@ -28,7 +30,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Plus, X, Flag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '../lib/utils';
+import { cn } from '@/app/lib/utils';
 import { createPortal } from 'react-dom';
 
 const COLUMNS: { id: KanbanTask['status'], title: string }[] = [
@@ -37,7 +39,7 @@ const COLUMNS: { id: KanbanTask['status'], title: string }[] = [
   { id: 'done', title: 'Done' }
 ];
 
-export function Kanban() {
+export default function Kanban() {
   const kanbanTasks = useStore(state => state.kanbanTasks) || [];
   const addKanbanTask = useStore(state => state.addKanbanTask);
   const updateKanbanTask = useStore(state => state.updateKanbanTask);

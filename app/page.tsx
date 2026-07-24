@@ -1,17 +1,19 @@
+"use client";
+
 import { 
   startOfMonth, endOfMonth, startOfWeek, endOfWeek, 
   eachDayOfInterval, format, isSameMonth, isToday, 
   addMonths, subMonths, isSameDay 
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Check, Edit3 } from "lucide-react";
-import { useStore } from "../store/useStore";
-import { isTaskScheduledOnDate, cn } from "../lib/utils";
+import { useStore } from "@/app/store/useStore";
+import { isTaskScheduledOnDate, cn } from "@/app/lib/utils";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
-import { Task } from "../types";
+import { Task } from "@/app/types";
 import React, { useRef, useEffect, useState } from "react";
 
-export function Dashboard() {
+export default function Dashboard() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   

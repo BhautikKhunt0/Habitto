@@ -1,12 +1,14 @@
+"use client";
+
 import { useMemo, useState } from "react";
-import { useStore } from "../store/useStore";
+import { useStore } from "@/app/store/useStore";
 import { format, subDays, startOfDay, isSameDay, eachDayOfInterval, startOfYear, endOfYear, getMonth, getYear } from "date-fns";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Trophy, Flame, Target, ChevronDown } from "lucide-react";
-import { isTaskScheduledOnDate, cn } from "../lib/utils";
+import { isTaskScheduledOnDate, cn } from "@/app/lib/utils";
 import { createPortal } from "react-dom";
 
-export function Stats() {
+export default function Stats() {
   const tasks = useStore((state) => state.tasks);
   const completions = useStore((state) => state.completions);
   const [selectedTaskId, setSelectedTaskId] = useState<string>("all");

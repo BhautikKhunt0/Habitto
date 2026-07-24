@@ -1,11 +1,13 @@
+"use client";
+
 import { useState } from "react";
-import { useStore } from "../store/useStore";
-import { Task, Frequency } from "../types";
+import { useStore } from "@/app/store/useStore";
+import { Task, Frequency } from "@/app/types";
 import { Plus, X, Calendar, Search, Edit2 } from "lucide-react";
-import { formatFrequency, cn } from "../lib/utils";
+import { formatFrequency, cn } from "@/app/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
-export function Tasks() {
+export default function Tasks() {
   const tasks = useStore((state) => state.tasks);
   const addTask = useStore((state) => state.addTask);
   const updateTask = useStore((state) => state.updateTask);
