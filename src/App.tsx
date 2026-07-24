@@ -5,6 +5,7 @@ import { Tasks } from "./pages/Tasks";
 import { Stats } from "./pages/Stats";
 import { Settings } from "./pages/Settings";
 import { Journal } from "./pages/Journal";
+import { Kanban } from "./pages/Kanban";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckSquare } from "lucide-react";
@@ -12,20 +13,15 @@ import { CheckSquare } from "lucide-react";
 import { useStore } from "./store/useStore";
 
 export default function App() {
-  const animationsEnabled = useStore(state => state.animationsEnabled);
-  const [isLoaded, setIsLoaded] = useState(!animationsEnabled);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    if (!animationsEnabled) {
-      setIsLoaded(true);
-      return;
-    }
     // Smooth entry
     const timer = setTimeout(() => {
       setIsLoaded(true);
     }, 1200);
     return () => clearTimeout(timer);
-  }, [animationsEnabled]);
+  }, []);
 
   return (
     <>
@@ -65,6 +61,7 @@ export default function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="tasks" element={<Tasks />} />
+              <Route path="kanban" element={<Kanban />} />
               <Route path="stats" element={<Stats />} />
               <Route path="journal" element={<Journal />} />
               <Route path="settings" element={<Settings />} />

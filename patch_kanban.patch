@@ -1,0 +1,141 @@
+--- src/pages/Kanban.tsx
++++ src/pages/Kanban.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useEffect, useCallback } from 'react';
++import React, { useState, useEffect, useCallback, forwardRef } from 'react';
+ import { useStore } from '../store/useStore';
+ import { KanbanTask } from '../types';
+ import { 
+@@ -140,7 +140,7 @@
+         </button>
+       </div>
+ 
+-      <div className="flex-1 flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory items-stretch h-full">
++      <div className="flex-1 flex gap-6 overflow-x-auto pb-4 items-stretch h-full">
+         <DndContext
+           sensors={sensors}
+           collisionDetection={closestCorners}
+@@ -181,7 +181,7 @@
+   });
+ 
+   return (
+-    <div className="flex-1 min-w-[300px] max-w-[400px] flex flex-col gap-4 snap-center">
++    <div className="flex-1 min-w-[300px] max-w-[400px] flex flex-col gap-4">
+       <div className="flex items-center justify-between mb-2 px-1">
+         <h3 className="font-semibold text-theme-text flex items-center gap-2">
+           {title}
+@@ -216,42 +216,53 @@
+   };
+ 
+   return (
+-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+-      <TaskCard task={task} onEdit={onEdit} onDelete={onDelete} />
+-    </div>
++    <TaskCard 
++      task={task} 
++      onEdit={onEdit} 
++      onDelete={onDelete} 
++      ref={setNodeRef}
++      style={style}
++      attributes={attributes}
++      listeners={listeners}
++    />
+   );
+ }
+ 
+-function TaskCard({ task, isOverlay, onEdit, onDelete }: { task: KanbanTask, isOverlay?: boolean, onEdit?: () => void, onDelete?: () => void }) {
+-  return (
+-    <div className={cn(
+-      "w-full touch-none bg-theme-surface border rounded-[1.5rem] p-4 flex flex-col gap-3 group relative cursor-grab active:cursor-grabbing",
+-      isOverlay ? "border-theme-text/30 shadow-2xl" : "border-theme-border shadow-sm hover:border-theme-text/20 hover:shadow-md transition-all"
+-    )}>
+-      <div className="flex items-start justify-between gap-2">
+-        <h4 className="font-medium text-theme-text break-words line-clamp-2 leading-tight">{task.title}</h4>
+-        {!isOverlay && (
+-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+-            <button 
+-              onPointerDown={(e) => { e.stopPropagation(); onEdit?.(); }}
+-              className="p-1.5 text-theme-muted hover:text-theme-text rounded-lg hover:bg-theme-bg"
+-            >
+-              Edit
+-            </button>
+-            <button 
+-              onPointerDown={(e) => { e.stopPropagation(); onDelete?.(); }}
+-              className="p-1.5 text-red-400 hover:text-red-500 rounded-lg hover:bg-red-500/10"
+-            >
+-              <X className="w-4 h-4" />
+-            </button>
+-          </div>
++const TaskCard = forwardRef<HTMLDivElement, { task: KanbanTask, isOverlay?: boolean, onEdit?: () => void, onDelete?: () => void, style?: React.CSSProperties, attributes?: any, listeners?: any }>(
++  ({ task, isOverlay, onEdit, onDelete, style, attributes, listeners }, ref) => {
++    return (
++      <div 
++        ref={ref}
++        style={style}
++        {...attributes}
++        {...listeners}
++        className={cn(
++          "w-full touch-none bg-theme-surface border rounded-[1.5rem] p-4 flex flex-col gap-3 group relative cursor-grab active:cursor-grabbing",
++          isOverlay ? "border-theme-text/30 shadow-2xl scale-105" : "border-theme-border shadow-sm hover:border-theme-text/20 hover:shadow-md transition-all"
++        )}
++      >
++        <div className="flex items-start justify-between gap-2">
++          <h4 className="font-medium text-theme-text break-words line-clamp-2 leading-tight">{task.title}</h4>
++          {!isOverlay && (
++            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
++              <button 
++                onPointerDown={(e) => { e.stopPropagation(); onEdit?.(); }}
++                className="p-1.5 text-theme-muted hover:text-theme-text rounded-lg hover:bg-theme-bg"
++              >
++                Edit
++              </button>
++              <button 
++                onPointerDown={(e) => { e.stopPropagation(); onDelete?.(); }}
++                className="p-1.5 text-red-400 hover:text-red-500 rounded-lg hover:bg-red-500/10"
++              >
++                <X className="w-4 h-4" />
++              </button>
++            </div>
++          )}
++        </div>
++        
++        {task.description && (
++          <p className="text-sm text-theme-muted line-clamp-2">{task.description}</p>
+         )}
+-      </div>
+-      
+-      {task.description && (
+-        <p className="text-sm text-theme-muted line-clamp-2">{task.description}</p>
+-      )}
+ 
+-      <div className="flex items-center gap-2 mt-1">
+-        <span className={cn(
+-          "text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1",
+-          task.priority === 'high' ? "bg-red-500/10 text-red-500" :
+-          task.priority === 'medium' ? "bg-orange-500/10 text-orange-500" :
+-          "bg-blue-500/10 text-blue-500"
+-        )}>
+-          <Flag className="w-3 h-3" />
+-          <span className="capitalize">{task.priority}</span>
+-        </span>
+-      </div>
+-    </div>
+-  );
+-}
++        <div className="flex items-center gap-2 mt-1">
++          <span className={cn(
++            "text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1",
++            task.priority === 'high' ? "bg-red-500/10 text-red-500" :
++            task.priority === 'medium' ? "bg-orange-500/10 text-orange-500" :
++            "bg-blue-500/10 text-blue-500"
++          )}>
++            <Flag className="w-3 h-3" />
++            <span className="capitalize">{task.priority}</span>
++          </span>
++        </div>
++      </div>
++    );
++  }
++);
+ 
+ function TaskModal({ onClose, task }: { onClose: () => void, task: KanbanTask | null }) {

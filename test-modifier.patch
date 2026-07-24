@@ -1,0 +1,28 @@
+--- src/pages/Kanban.tsx
++++ src/pages/Kanban.tsx
+@@ -1,4 +1,4 @@
+-import { MeasuringStrategy } from "@dnd-kit/core";
++import { MeasuringStrategy, Modifier } from "@dnd-kit/core";
+ import React, { useState, useEffect, useCallback, forwardRef } from 'react';
+ import { useStore } from '../store/useStore';
+ import { KanbanTask } from '../types';
+@@ -165,6 +165,11 @@
+     }
+   }, [activeId, overId, activeContainer, overContainer]);
+ 
++  const customModifier: Modifier = ({ transform, activeNodeRect }) => {
++    // console.log('activeNodeRect', activeNodeRect, 'transform', transform);
++    return transform;
++  };
++
+   return (
+     <div className="h-full flex flex-col gap-6">
+       <div className="flex items-center justify-between">
+@@ -194,6 +199,7 @@
+             dropAnimation={{
+               sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
+             }}
++            modifiers={[customModifier]}
+           >
+             {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+           </DragOverlay>

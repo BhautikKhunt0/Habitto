@@ -10,8 +10,7 @@ export function Settings() {
     tasks, completions,
     themeMode, setThemeMode,
     themeId, setThemeId,
-    customThemes, addCustomTheme, deleteCustomTheme,
-    animationsEnabled, setAnimationsEnabled
+    customThemes, addCustomTheme, deleteCustomTheme
   } = useStore();
   
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
@@ -242,27 +241,6 @@ export function Settings() {
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="p-8 md:p-10 border-b border-theme-border flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-display font-medium text-theme-text mb-1">Fluid Animations</h2>
-            <p className="text-sm text-theme-muted">Enable or disable UI motion and transitions.</p>
-          </div>
-          <button
-            onClick={() => setAnimationsEnabled(!animationsEnabled)}
-            className={cn(
-              "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-theme-text focus:ring-offset-2",
-              animationsEnabled ? "bg-theme-text" : "bg-theme-border"
-            )}
-          >
-            <span
-              className={cn(
-                "inline-block h-6 w-6 transform rounded-full bg-theme-bg transition-transform",
-                animationsEnabled ? "translate-x-5" : "translate-x-0"
-              )}
-            />
-          </button>
         </div>
 
         <div className="p-8 md:p-10 border-b border-theme-border">

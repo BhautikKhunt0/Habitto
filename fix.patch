@@ -1,0 +1,19 @@
+--- src/pages/Kanban.tsx
++++ src/pages/Kanban.tsx
+@@ -107,11 +107,7 @@
+       if (overId === 'todo' || overId === 'in-progress' || overId === 'done') {
+         newIndex = overItems.length + 1;
+       } else {
+-        const isBelowOverItem =
+-          over &&
+-          active.rect.current.translated &&
+-          active.rect.current.translated.top >
+-            over.rect.top + over.rect.height;
+-
+-        const modifier = isBelowOverItem ? 1 : 0;
+-        newIndex = overIndex >= 0 ? overIndex + modifier : overItems.length + 1;
++        const overItemIndex = overItems.findIndex(t => t.id === overId);
++        const isBelowOverItem = over && active.rect.current.translated && active.rect.current.translated.top > over.rect.top + over.rect.height;
++        const modifier = isBelowOverItem ? 1 : 0;
++        newIndex = overItemIndex >= 0 ? overItemIndex + modifier : overItems.length + 1;
+       }

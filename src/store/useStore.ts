@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Task, CompletionRecord, AppData, CustomTheme, JournalEntry } from '../types';
+import { Task, CompletionRecord, AppData, CustomTheme, JournalEntry, KanbanTask } from '../types';
 import { format } from 'date-fns';
 
 export const DEFAULT_THEMES = [
@@ -18,8 +18,8 @@ interface StoreState extends AppData {
   themeId: string;
   customThemes: CustomTheme[];
   journalEntries: JournalEntry[];
+  kanbanTasks: KanbanTask[];
   quote: string;
-  animationsEnabled: boolean;
   navPosition: 'bottom' | 'left' | 'right';
   setThemeMode: (mode: 'light' | 'dark' | 'system') => void;
   setThemeColor: (color: string) => void;
@@ -28,7 +28,6 @@ interface StoreState extends AppData {
   updateCustomTheme: (id: string, theme: CustomTheme) => void;
   deleteCustomTheme: (id: string) => void;
   setQuote: (quote: string) => void;
-  setAnimationsEnabled: (enabled: boolean) => void;
   setNavPosition: (position: 'bottom' | 'left' | 'right') => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'archived'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
@@ -38,6 +37,9 @@ interface StoreState extends AppData {
   addJournalEntry: (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => void;
   deleteJournalEntry: (id: string) => void;
+  addKanbanTask: (task: Omit<KanbanTask, "id" | "createdAt">) => void;
+  updateKanbanTask: (id: string, updates: Partial<KanbanTask>) => void;
+  deleteKanbanTask: (id: string) => void;
 
   importData: (data: AppData) => void;
   clearData: () => void;
@@ -49,13 +51,13 @@ export const useStore = create<StoreState>()(
       tasks: [],
       completions: [],
       journalEntries: [],
+      kanbanTasks: [],
       version: '1.0',
       quote: "Consistency is the only bridge between goals and accomplishment.",
       themeMode: 'dark',
       themeColor: '#ddb7ff',
       themeId: 'purple',
       customThemes: [],
-      animationsEnabled: false,
       navPosition: 'bottom',
       
       setThemeMode: (themeMode) => set({ themeMode }),
@@ -70,7 +72,6 @@ export const useStore = create<StoreState>()(
         themeId: state.themeId === id ? 'purple' : state.themeId
       })),
       setQuote: (quote) => set({ quote }),
-      setAnimationsEnabled: (animationsEnabled) => set({ animationsEnabled }),
       setNavPosition: (navPosition) => set({ navPosition }),
 
       addTask: (taskData) => set((state) => ({
@@ -128,21 +129,40 @@ export const useStore = create<StoreState>()(
         journalEntries: state.journalEntries.filter(e => e.id !== id)
       })),
 
+      addKanbanTask: (taskData) => set((state) => ({
+        kanbanTasks: [
+          ...state.kanbanTasks,
+          {
+            ...taskData,
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString()
+          }
+        ]
+      })),
+
+      updateKanbanTask: (id, updates) => set((state) => ({
+        kanbanTasks: state.kanbanTasks.map(t => t.id === id ? { ...t, ...updates } : t)
+      })),
+
+      deleteKanbanTask: (id) => set((state) => ({
+        kanbanTasks: state.kanbanTasks.filter(t => t.id !== id)
+      })),
+
       importData: (data) => set(() => ({
         tasks: data.tasks,
         completions: data.completions,
         journalEntries: data.journalEntries || [],
+        kanbanTasks: data.kanbanTasks || [],
         version: data.version || '1.0',
         quote: data.quote || "Consistency is the only bridge between goals and accomplishment.",
         themeMode: data.themeMode || 'dark',
         themeColor: data.themeColor || '#ddb7ff',
         themeId: data.themeId || 'purple',
         customThemes: data.customThemes || [],
-        animationsEnabled: data.animationsEnabled !== undefined ? data.animationsEnabled : false,
         navPosition: data.navPosition || 'bottom',
       })),
 
-      clearData: () => set(() => ({ tasks: [], completions: [], journalEntries: [] }))
+      clearData: () => set(() => ({ tasks: [], completions: [], journalEntries: [], kanbanTasks: [] }))
     }),
     {
       name: 'habit-tracker-data',

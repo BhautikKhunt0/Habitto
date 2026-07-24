@@ -20,7 +20,6 @@ export function Dashboard() {
   const toggleCompletion = useStore((state) => state.toggleCompletion);
   const quote = useStore((state) => state.quote);
   const setQuote = useStore((state) => state.setQuote);
-  const animationsEnabled = useStore(state => state.animationsEnabled);
 
   const [isEditingQuote, setIsEditingQuote] = useState(false);
   const [tempQuote, setTempQuote] = useState(quote || "Consistency is the only bridge between goals and accomplishment.");
@@ -60,14 +59,12 @@ export function Dashboard() {
       completedTasksIds.add(taskId); 
       
       if (scheduledTasks.length > 0 && scheduledTasks.every(t => completedTasksIds.has(t.id))) {
-        if (animationsEnabled) {
           confetti({
             particleCount: 100,
             spread: 70,
             origin: { y: 0.6 },
             colors: ['#000000', '#ffffff', '#888888']
           });
-        }
       }
     }
   };
@@ -265,7 +262,6 @@ export function Dashboard() {
                   task={task} 
                   isCompleted={isCompleted} 
                   onToggle={() => handleToggle(task.id, selectedDateStr)}
-                  animationsEnabled={animationsEnabled}
                 />
               )
             })}
@@ -276,15 +272,15 @@ export function Dashboard() {
   );
 }
 
-function TaskItem({ task, isCompleted, onToggle, animationsEnabled, key }: { task: Task, isCompleted: boolean, onToggle: () => void, animationsEnabled: boolean, key?: React.Key }) {
+function TaskItem({ task, isCompleted, onToggle, key }: { task: Task, isCompleted: boolean, onToggle: () => void, key?: React.Key }) {
   return (
     <motion.label
-      layout={animationsEnabled}
-      initial={animationsEnabled ? { opacity: 0, y: 10 } : { opacity: 1, y: 0 }}
+      layout
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={animationsEnabled ? { opacity: 0, scale: 0.95 } : { opacity: 0 }}
-      whileHover={animationsEnabled ? { scale: 1.01 } : {}}
-      whileTap={animationsEnabled ? { scale: 0.99 } : {}}
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
       className={cn(
         "flex items-center gap-4 p-4 rounded-[1.25rem] cursor-pointer transition-all duration-300",
         isCompleted 

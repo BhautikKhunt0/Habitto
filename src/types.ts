@@ -43,16 +43,26 @@ export interface CustomTheme {
   darkColor: string;
 }
 
+export interface KanbanTask {
+  id: string;
+  title: string;
+  description?: string;
+  priority: 'low' | 'medium' | 'high';
+  status: 'todo' | 'in-progress' | 'done';
+  createdAt: string;
+  order: number;
+}
+
 export interface AppData {
   tasks: Task[];
   completions: CompletionRecord[];
   journalEntries?: JournalEntry[];
+  kanbanTasks?: KanbanTask[];
   version: string;
   quote?: string;
   themeMode?: 'light' | 'dark' | 'system';
   themeColor?: string;
   themeId?: string;
   customThemes?: CustomTheme[];
-  animationsEnabled?: boolean;
   navPosition?: 'bottom' | 'left' | 'right';
 }

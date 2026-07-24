@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, CheckSquare, BarChart2, Settings, Book } from "lucide-react";
+import { LayoutDashboard, CheckSquare, BarChart2, Settings, Book, Kanban } from "lucide-react";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { cn, hexToRgb } from "../lib/utils";
 import { AnimatePresence, motion, useMotionValue } from "framer-motion";
@@ -53,7 +53,6 @@ export function Layout() {
   const themeMode = useStore(state => state.themeMode);
   const themeId = useStore(state => state.themeId);
   const customThemes = useStore(state => state.customThemes);
-  const animationsEnabled = useStore(state => state.animationsEnabled);
   const themeColorState = useStore(state => state.themeColor);
   const navPosition = useStore(state => state.navPosition);
   const setNavPosition = useStore(state => state.setNavPosition);
@@ -129,6 +128,7 @@ export function Layout() {
   const navItems = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "Tasks", path: "/tasks", icon: CheckSquare },
+    { name: "Kanban", path: "/kanban", icon: Kanban },
     { name: "Journal", path: "/journal", icon: Book },
     { name: "Analytics", path: "/stats", icon: BarChart2 },
     { name: "Settings", path: "/settings", icon: Settings },
@@ -146,12 +146,12 @@ export function Layout() {
         
         {/* Top Branding (Minimal) */}
         <header className="w-full flex items-center justify-between p-6 md:px-12 md:py-8 max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-xl bg-theme-text flex items-center justify-center">
               <CheckSquare className="w-4 h-4 text-theme-bg" />
             </div>
             <h1 className="text-xl font-display font-medium tracking-tight text-theme-text">Habitto</h1>
-          </div>
+          </Link>
         </header>
 
         {/* Scrollable Content wrapper */}
@@ -159,10 +159,10 @@ export function Layout() {
           <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}
-                initial={animationsEnabled ? { opacity: 0, scale: 0.98, filter: "blur(4px)" } : { opacity: 1 }}
+                initial={{ opacity: 0, scale: 0.98, filter: "blur(4px)" }}
                 animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                exit={animationsEnabled ? { opacity: 0, scale: 0.98, filter: "blur(4px)" } : { opacity: 1 }}
-                transition={animationsEnabled ? { duration: 0.4, ease: [0.22, 1, 0.36, 1] } : { duration: 0 }}
+                exit={{ opacity: 0, scale: 0.98, filter: "blur(4px)" }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 className="h-full"
               >
                 <Outlet />

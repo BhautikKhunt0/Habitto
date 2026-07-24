@@ -10,7 +10,6 @@ export function Tasks() {
   const addTask = useStore((state) => state.addTask);
   const updateTask = useStore((state) => state.updateTask);
   const deleteTask = useStore((state) => state.deleteTask);
-  const animationsEnabled = useStore(state => state.animationsEnabled);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -105,10 +104,10 @@ export function Tasks() {
           <AnimatePresence mode="popLayout">
             {filteredTasks.map(task => (
               <motion.div
-                layout={animationsEnabled}
-                initial={animationsEnabled ? { opacity: 0, scale: 0.95 } : { opacity: 1, scale: 1 }}
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={animationsEnabled ? { opacity: 0, scale: 0.95 } : { opacity: 0, scale: 0.95 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 key={task.id}
                 className="bg-theme-surface border border-theme-border rounded-[2rem] p-6 group hover:border-theme-text/20 transition-all duration-300 relative flex flex-col justify-between min-h-[160px]"
               >
