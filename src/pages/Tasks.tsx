@@ -1,390 +1,416 @@
-import React, { useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useStore } from "../store/useStore";
-import { Plus, Trash2, Edit2, Archive, ArchiveRestore } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Task, Frequency } from "../types";
-import { cn } from "../lib/utils";
-import { format } from "date-fns";
+import { Plus, X, Calendar, Search, Edit2 } from "lucide-react";
+import { formatFrequency, cn } from "../lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function Tasks() {
   const tasks = useStore((state) => state.tasks);
   const addTask = useStore((state) => state.addTask);
   const updateTask = useStore((state) => state.updateTask);
   const deleteTask = useStore((state) => state.deleteTask);
-  
+  const animationsEnabled = useStore(state => state.animationsEnabled);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   
-  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
-  const openNewTaskModal = () => {
-    setEditingTask(null);
+  const handleOpenModal = (task?: Task) => {
+    if (task) {
+      setEditingTask(task);
+    } else {
+      setEditingTask(null);
+    }
     setIsModalOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (taskToDelete) {
-      deleteTask(taskToDelete, false);
-      setTaskToDelete(null);
-    }
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingTask(null);
   };
 
+  const filteredTasks = tasks.filter(t => {
+    if (showArchived ? !t.archived : t.archived) return false;
+    if (searchQuery && !t.name.toLowerCase().includes(searchQuery.toLowerCase()) && !(t.category || t.channelName || "").toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    return true;
+  });
+
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-light tracking-wide text-theme-text mb-1">Routine Tasks</h1>
-          <p className="text-theme-muted">Manage your daily and recurring habits.</p>
+    <div className="w-full pt-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+        <h2 className="text-3xl font-display font-medium text-theme-text">Tasks</h2>
+        
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-muted" />
+            <input 
+              type="text" 
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-theme-bg border border-theme-border rounded-full pl-11 pr-4 py-2.5 text-sm text-theme-text focus:outline-none focus:border-theme-text transition-colors placeholder:text-theme-muted/50"
+            />
+          </div>
+          <button 
+            onClick={() => handleOpenModal()}
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-theme-text text-theme-bg hover:opacity-90 transition-opacity shrink-0"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
         </div>
+      </div>
+
+      <div className="flex gap-4 mb-8 border-b border-theme-border pb-1">
         <button 
-          onClick={openNewTaskModal}
-          className="flex items-center gap-2 bg-theme-accent text-theme-bg px-6 py-3 rounded-full hover:bg-theme-accent/90 transition-colors font-medium active:scale-95"
+          onClick={() => setShowArchived(false)}
+          className={cn(
+            "pb-3 text-sm font-medium tracking-wide transition-colors relative",
+            !showArchived ? "text-theme-text" : "text-theme-muted hover:text-theme-text"
+          )}
         >
-          <Plus className="w-5 h-5" />
-          <span>New Task</span>
+          Active
+          {!showArchived && <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
+        </button>
+        <button 
+          onClick={() => setShowArchived(true)}
+          className={cn(
+            "pb-3 text-sm font-medium tracking-wide transition-colors relative",
+            showArchived ? "text-theme-text" : "text-theme-muted hover:text-theme-text"
+          )}
+        >
+          Archived
+          {showArchived && <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        <AnimatePresence mode="popLayout">
-          {tasks.length === 0 && (
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="text-center py-20 bg-theme-surface border border-theme-border rounded-3xl"
+      {filteredTasks.length === 0 ? (
+        <div className="text-center py-20 border border-dashed border-theme-border rounded-[2rem]">
+          <p className="text-theme-muted text-sm uppercase tracking-widest font-medium mb-4">No tasks found</p>
+          {!showArchived && (
+            <button 
+              onClick={() => handleOpenModal()}
+              className="px-6 py-2.5 rounded-full border border-theme-border hover:border-theme-text text-theme-text text-sm font-medium transition-colors"
             >
-              <p className="text-theme-muted">No tasks yet. Create one to get started.</p>
-            </motion.div>
+              Create your first task
+            </button>
           )}
-          {tasks.map((task) => (
-            <motion.div
-              layout
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              whileHover={{ scale: 1.01, translateY: -2 }}
-              key={task.id}
-              className={cn(
-                "bg-theme-surface border border-theme-border p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-theme-accent/30",
-                task.archived && "opacity-50 grayscale hover:scale-100 hover:translate-y-0 hover:shadow-none"
-              )}
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center border border-theme-border" style={{ backgroundColor: `${task.color}20` }}>
-                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: task.color }} />
-                </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <AnimatePresence mode="popLayout">
+            {filteredTasks.map(task => (
+              <motion.div
+                layout={animationsEnabled}
+                initial={animationsEnabled ? { opacity: 0, scale: 0.95 } : { opacity: 1, scale: 1 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={animationsEnabled ? { opacity: 0, scale: 0.95 } : { opacity: 0, scale: 0.95 }}
+                key={task.id}
+                className="bg-theme-surface border border-theme-border rounded-[2rem] p-6 group hover:border-theme-text/20 transition-all duration-300 relative flex flex-col justify-between min-h-[160px]"
+              >
                 <div>
-                  <h3 className="text-xl font-medium text-theme-text mb-1">{task.name}</h3>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-theme-muted">
-                    {(task.category || task.channelName) && <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-theme-muted" /> {task.category || task.channelName}</span>}
-                    <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-theme-muted" /> {formatFrequency(task.frequency)}</span>
-                    {task.endDate && <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-theme-muted" /> Until {task.endDate}</span>}
-                    {task.archived && <span className="text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md text-xs">Archived</span>}
+                  <div className="flex justify-between items-start gap-4 mb-2">
+                    <h3 className="font-display text-xl font-medium text-theme-text leading-tight">{task.name}</h3>
                   </div>
+                  {task.notes && (
+                    <p className="text-sm text-theme-muted line-clamp-2 mt-2">{task.notes}</p>
+                  )}
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-2 self-end md:self-auto">
-                <button 
-                  onClick={() => updateTask(task.id, { archived: !task.archived })}
-                  className="p-2 text-theme-muted hover:text-theme-text hover:bg-theme-border rounded-full transition-colors"
-                  title={task.archived ? "Unarchive" : "Archive"}
-                >
-                  {task.archived ? <ArchiveRestore className="w-5 h-5" /> : <Archive className="w-5 h-5" />}
-                </button>
-                <button 
-                  onClick={() => { setEditingTask(task); setIsModalOpen(true); }}
-                  className="p-2 text-theme-muted hover:text-theme-text hover:bg-theme-border rounded-full transition-colors"
-                >
-                  <Edit2 className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={() => setTaskToDelete(task.id)}
-                  className="p-2 text-red-400 hover:bg-red-500/10 rounded-full transition-colors"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
 
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-semibold tracking-widest uppercase text-theme-muted">
+                    {task.priority && (
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-md",
+                        task.priority === 'high' ? "bg-red-500/10 text-red-500" :
+                        task.priority === 'medium' ? "bg-orange-500/10 text-orange-500" :
+                        "bg-green-500/10 text-green-500"
+                      )}>{task.priority}</span>
+                    )}
+                    {(task.category || task.channelName) && <span>{task.category || task.channelName}</span>}
+                    <span className="w-1 h-1 rounded-full bg-theme-border" />
+                    <span>{formatFrequency(task.frequency)}</span>
+                  </div>
+                  
+                  <button 
+                    onClick={() => handleOpenModal(task)}
+                    className="w-8 h-8 rounded-full border border-theme-border flex items-center justify-center text-theme-text hover:bg-theme-text hover:text-theme-bg transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Modal */}
       <AnimatePresence>
         {isModalOpen && (
           <TaskModal 
-            onClose={() => setIsModalOpen(false)} 
-            editingTask={editingTask}
+            task={editingTask} 
+            onClose={handleCloseModal} 
             onSave={(taskData) => {
               if (editingTask) {
                 updateTask(editingTask.id, taskData);
               } else {
                 addTask(taskData);
               }
-              setIsModalOpen(false);
+              handleCloseModal();
             }}
+            onDelete={editingTask ? () => {
+              deleteTask(editingTask.id, false);
+              handleCloseModal();
+            } : undefined}
+            onToggleArchive={editingTask ? () => {
+              updateTask(editingTask.id, { archived: !editingTask.archived });
+              handleCloseModal();
+            } : undefined}
           />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {taskToDelete && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setTaskToDelete(null)}
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl"
-            >
-              <h2 className="text-xl font-medium text-theme-text mb-4">Delete Task?</h2>
-              <p className="text-theme-muted mb-8">This action cannot be undone. All completion history for this task will be lost.</p>
-              <div className="flex justify-end gap-3">
-                <button 
-                  onClick={() => setTaskToDelete(null)}
-                  className="px-5 py-2.5 rounded-xl text-theme-muted hover:bg-theme-border transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={confirmDelete}
-                  className="px-5 py-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors font-medium"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </div>
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-function formatFrequency(freq: Frequency): string {
-  switch (freq.type) {
-    case 'daily': return 'Daily';
-    case 'alternate': return 'Every other day';
-    case 'weekly': {
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      return freq.daysOfWeek.map(d => days[d]).join(', ');
-    }
-    case 'custom': return `Every ${freq.interval} days`;
-  }
-}
-
-function TaskModal({ onClose, editingTask, onSave }: { onClose: () => void, editingTask: Task | null, onSave: (task: any) => void }) {
+function TaskModal({ 
+  task: editingTask, 
+  onClose, 
+  onSave, 
+  onDelete, 
+  onToggleArchive 
+}: { 
+  task: Task | null, 
+  onClose: () => void, 
+  onSave: (data: any) => void,
+  onDelete?: () => void,
+  onToggleArchive?: () => void
+}) {
   const [name, setName] = useState(editingTask?.name || "");
   const [category, setCategory] = useState(editingTask?.category || editingTask?.channelName || "");
-  const [color, setColor] = useState(editingTask?.color || "#a855f7");
-  const [freqType, setFreqType] = useState<Frequency['type']>(editingTask?.frequency.type || 'daily');
+  const [freqType, setFreqType] = useState<string>(editingTask?.frequency.type || 'daily');
   const [endDate, setEndDate] = useState(editingTask?.endDate || "");
+  const [notes, setNotes] = useState(editingTask?.notes || "");
+  const [priority, setPriority] = useState<string>(editingTask?.priority || "medium");
   
-  // Weekly specific
   const [selectedDays, setSelectedDays] = useState<number[]>(
-    editingTask?.frequency.type === 'weekly' ? editingTask.frequency.daysOfWeek : [1, 3, 5]
+    editingTask?.frequency.type === 'weekly' ? editingTask.frequency.daysOfWeek : []
   );
   
-  // Custom / Alternate specific
-  const [interval, setInterval] = useState(
-    editingTask?.frequency.type === 'custom' ? editingTask.frequency.interval : 3
-  );
-  const [startDate, setStartDate] = useState(
-    (editingTask?.frequency.type === 'alternate' || editingTask?.frequency.type === 'custom') 
-      ? editingTask.frequency.startDate 
-      : format(new Date(), 'yyyy-MM-dd')
+  const [interval, setIntervalVal] = useState<number>(
+    editingTask?.frequency.type === 'custom' ? editingTask.frequency.interval : 2
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = () => {
     if (!name.trim()) return;
 
     let frequency: Frequency;
+    const nowStr = new Date().toISOString().split('T')[0];
+
     if (freqType === 'daily') {
       frequency = { type: 'daily' };
-    } else if (freqType === 'alternate') {
-      frequency = { type: 'alternate', startDate };
     } else if (freqType === 'weekly') {
-      frequency = { type: 'weekly', daysOfWeek: selectedDays };
+      frequency = { type: 'weekly', daysOfWeek: selectedDays.length > 0 ? selectedDays : [1] };
+    } else if (freqType === 'alternate') {
+      frequency = { type: 'alternate', startDate: nowStr };
     } else {
-      frequency = { type: 'custom', interval, startDate };
+      frequency = { type: 'custom', interval, startDate: nowStr };
     }
 
     onSave({
       name: name.trim(),
       category: category.trim(),
-      color,
       frequency,
+      priority: priority as any,
+      color: '#111111',
+      notes: notes.trim(),
       ...(endDate ? { endDate } : {})
     });
   };
 
-  const toggleDay = (day: number) => {
-    if (selectedDays.includes(day)) {
-      if (selectedDays.length > 1) setSelectedDays(selectedDays.filter(d => d !== day));
-    } else {
-      setSelectedDays([...selectedDays, day].sort());
-    }
-  };
-
-  const colors = ["#ef4444", "#f97316", "#f59e0b", "#10b981", "#14b8a6", "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef", "#f43f5e"];
-
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <motion.div 
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/30 backdrop-blur-md"
         onClick={onClose}
       />
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative bg-theme-surface border border-theme-border rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]"
+        initial={{ opacity: 0, scale: 0.95, y: 10 }} 
+        animate={{ opacity: 1, scale: 1, y: 0 }} 
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        className="relative bg-theme-surface border border-theme-border rounded-[2.5rem] w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
       >
-        <h2 className="text-2xl font-light text-theme-text mb-6">{editingTask ? 'Edit Task' : 'New Task'}</h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex items-center justify-between p-6 md:p-8 border-b border-theme-border">
+          <h2 className="text-xl font-display font-medium text-theme-text">{editingTask ? 'Edit Task' : 'New Task'}</h2>
+          <button onClick={onClose} className="p-2 -mr-2 text-theme-muted hover:text-theme-text transition-colors rounded-full hover:bg-theme-bg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
+          
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-theme-muted mb-1.5">Task Name</label>
               <input 
-                autoFocus
                 type="text" 
-                required
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full bg-theme-bg border border-theme-border rounded-xl px-4 py-3 text-theme-text focus:outline-none focus:border-theme-accent transition-colors"
-                placeholder="e.g. Upload Tech Review"
+                placeholder="Task name"
+                className="w-full bg-transparent border-b-2 border-theme-border focus:border-theme-text px-0 py-3 text-2xl font-display font-medium text-theme-text focus:outline-none transition-colors placeholder:text-theme-muted/50"
+                autoFocus
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium text-theme-muted mb-1.5">Category / User (Optional)</label>
               <input 
                 type="text" 
                 value={category}
                 onChange={e => setCategory(e.target.value)}
-                className="w-full bg-theme-bg border border-theme-border rounded-xl px-4 py-3 text-theme-text focus:outline-none focus:border-theme-accent transition-colors"
-                placeholder="e.g. Work, Health, or @John"
+                placeholder="Category (Optional)"
+                className="w-full bg-theme-bg border border-theme-border rounded-2xl px-4 py-3 text-sm text-theme-text focus:outline-none focus:border-theme-text transition-colors"
               />
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-theme-muted mb-2">Color</label>
-              <div className="flex flex-wrap gap-3">
-                {colors.map(c => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center transition-transform",
-                      color === c ? "scale-110 ring-2 ring-theme-bg ring-offset-2 ring-offset-theme-accent" : "hover:scale-110"
-                    )}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </div>
+          <div className="space-y-4">
+            <label className="block text-xs font-semibold tracking-widest uppercase text-theme-muted">Frequency</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {(['daily', 'alternate', 'weekly', 'custom'] as const).map(type => (
+                <button
+                  key={type}
+                  onClick={() => setFreqType(type)}
+                  className={cn(
+                    "px-4 py-3 rounded-2xl text-sm font-medium transition-colors border",
+                    freqType === type 
+                      ? "bg-theme-text text-theme-bg border-theme-text" 
+                      : "bg-theme-bg text-theme-text border-theme-border hover:border-theme-text/30"
+                  )}
+                >
+                  {type === 'alternate' ? 'Alternate' : type.charAt(0).toUpperCase() + type.slice(1)}
+                </button>
+              ))}
             </div>
 
-            <div className="pt-4 border-t border-theme-border">
-              <label className="block text-sm font-medium text-theme-muted mb-3">Frequency</label>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {(['daily', 'weekly', 'alternate', 'custom'] as const).map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setFreqType(type)}
+            {freqType === 'weekly' && (
+              <div className="pt-2 flex flex-wrap gap-2">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => (                  <button
+                    key={day}
+                    onClick={() => {
+                      if (selectedDays.includes(idx)) {
+                        setSelectedDays(selectedDays.filter(d => d !== idx));
+                      } else {
+                        setSelectedDays([...selectedDays, idx]);
+                      }
+                    }}
                     className={cn(
-                      "px-4 py-2 rounded-lg text-sm transition-colors border",
-                      freqType === type 
-                        ? "bg-theme-accent/20 border-theme-accent/50 text-theme-accent" 
-                        : "bg-theme-bg border-transparent text-theme-muted hover:bg-theme-border hover:text-theme-text"
+                      "w-10 h-10 rounded-full text-sm font-medium transition-colors border",
+                      selectedDays.includes(idx) 
+                        ? "bg-theme-text text-theme-bg border-theme-text" 
+                        : "bg-theme-bg text-theme-text border-theme-border hover:border-theme-text/30"
                     )}
                   >
-                    <span className="capitalize">{type}</span>
+                    {day.charAt(0)}
                   </button>
                 ))}
               </div>
+            )}
 
-              {freqType === 'weekly' && (
-                <div className="flex gap-1.5 mt-4">
-                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+            {freqType === 'custom' && (
+              <div className="pt-2 flex items-center gap-3">
+                <span className="text-theme-text text-sm">Every</span>
+                <input 
+                  type="number" 
+                  min="2" 
+                  max="365"
+                  value={interval}
+                  onChange={e => setIntervalVal(parseInt(e.target.value) || 2)}
+                  className="w-20 bg-theme-bg border border-theme-border rounded-xl px-3 py-2 text-center text-theme-text focus:outline-none focus:border-theme-text"
+                />
+                <span className="text-theme-text text-sm">days</span>
+              </div>
+            )}
+            
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold tracking-widest uppercase text-theme-muted mb-2">Priority</label>
+                <div className="flex bg-theme-bg border border-theme-border rounded-2xl p-1">
+                  {(['low', 'medium', 'high'] as const).map(p => (
                     <button
-                      key={i}
-                      type="button"
-                      onClick={() => toggleDay(i)}
+                      key={p}
+                      onClick={() => setPriority(p)}
                       className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors border",
-                        selectedDays.includes(i)
-                          ? "bg-theme-accent border-theme-accent text-theme-bg"
-                          : "bg-theme-bg border-theme-border text-theme-muted hover:bg-theme-border"
+                        "flex-1 py-2 text-sm font-medium rounded-xl transition-colors capitalize",
+                        priority === p ? "bg-theme-text text-theme-bg shadow-sm" : "text-theme-muted hover:text-theme-text"
                       )}
                     >
-                      {day}
+                      {p}
                     </button>
                   ))}
                 </div>
-              )}
-
-              {(freqType === 'alternate' || freqType === 'custom') && (
-                <div className="space-y-4 mt-4 bg-theme-bg p-4 rounded-xl border border-theme-border">
-                  {freqType === 'custom' && (
-                    <div>
-                      <label className="block text-sm text-theme-muted mb-1.5">Interval (Days)</label>
-                      <input 
-                        type="number" 
-                        min="1"
-                        value={interval}
-                        onChange={e => setInterval(parseInt(e.target.value) || 1)}
-                        className="w-full bg-theme-surface border border-theme-border rounded-lg px-3 py-2 text-theme-text focus:outline-none focus:border-theme-accent"
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-sm text-theme-muted mb-1.5">Start Date</label>
-                    <input 
-                      type="date" 
-                      value={startDate}
-                      onChange={e => setStartDate(e.target.value)}
-                      className="w-full bg-theme-surface border border-theme-border rounded-lg px-3 py-2 text-theme-text focus:outline-none focus:border-theme-accent"
-                    />
-                  </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold tracking-widest uppercase text-theme-muted mb-2">End Date (Optional)</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-muted" />
+                  <input 
+                    type="date" 
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    className="w-full bg-theme-bg border border-theme-border rounded-2xl pl-10 pr-4 py-3 text-sm text-theme-text focus:outline-none focus:border-theme-text transition-colors"
+                  />
                 </div>
-              )}
-
-              <div className="mt-4 pt-4 border-t border-theme-border">
-                <label className="block text-sm font-medium text-theme-muted mb-1.5">End Date (Optional)</label>
-                <input 
-                  type="date" 
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                  className="w-full bg-theme-bg border border-theme-border rounded-xl px-4 py-3 text-theme-text focus:outline-none focus:border-theme-accent transition-colors"
-                />
-                <p className="text-xs text-theme-muted mt-1.5">Task will no longer appear in your dashboard after this date.</p>
               </div>
             </div>
+            
+            <div>
+              <label className="block text-xs font-semibold tracking-widest uppercase text-theme-muted mb-2">Notes</label>
+              <textarea 
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Optional details..."
+                className="w-full bg-theme-bg border border-theme-border rounded-2xl px-4 py-3 text-sm text-theme-text focus:outline-none focus:border-theme-text transition-colors min-h-[80px]"
+              />
+            </div>
           </div>
+        </div>
 
-          <div className="flex justify-end gap-3 pt-6">
-            <button 
-              type="button" 
-              onClick={onClose}
-              className="px-6 py-2.5 rounded-full text-theme-muted hover:bg-theme-border transition-colors font-medium"
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit"
-              className="px-6 py-2.5 rounded-full bg-theme-accent text-theme-bg hover:bg-theme-accent/90 transition-colors font-medium"
-            >
-              Save Task
-            </button>
-          </div>
-        </form>
+        <div className="p-6 md:p-8 border-t border-theme-border bg-theme-surface flex items-center justify-between gap-4">
+          {editingTask ? (
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={onDelete}
+                className="px-4 py-3 rounded-full text-sm font-medium text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-colors"
+              >
+                Delete
+              </button>
+              <button 
+                onClick={onToggleArchive}
+                className="px-4 py-3 rounded-full text-sm font-medium text-theme-text bg-theme-bg border border-theme-border hover:border-theme-text/30 transition-colors"
+              >
+                {editingTask.archived ? 'Unarchive' : 'Archive'}
+              </button>
+            </div>
+          ) : <div />}
+          
+          <button 
+            onClick={handleSave}
+            disabled={!name.trim()}
+            className="px-8 py-3 rounded-full bg-theme-text text-theme-bg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Save Task
+          </button>
+        </div>
       </motion.div>
     </div>
   );
 }
-

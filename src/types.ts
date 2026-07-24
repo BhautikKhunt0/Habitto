@@ -4,6 +4,8 @@ export type Frequency =
   | { type: 'weekly'; daysOfWeek: number[] } // 0-6 (Sun-Sat)
   | { type: 'custom'; interval: number; startDate: string };
 
+export type Priority = 'low' | 'medium' | 'high';
+
 export interface Task {
   id: string;
   name: string;
@@ -12,6 +14,7 @@ export interface Task {
   color: string;
   icon?: string;
   frequency: Frequency;
+  priority?: Priority;
   createdAt: string;
   endDate?: string; // "YYYY-MM-DD"
   archived: boolean;
@@ -24,6 +27,15 @@ export interface CompletionRecord {
   completedAt: string; // timestamp
 }
 
+export interface JournalEntry {
+  id: string;
+  date: string; // "YYYY-MM-DD"
+  content: string;
+  mood?: 'great' | 'good' | 'neutral' | 'bad' | 'awful';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CustomTheme {
   id: string;
   name: string;
@@ -34,11 +46,13 @@ export interface CustomTheme {
 export interface AppData {
   tasks: Task[];
   completions: CompletionRecord[];
+  journalEntries?: JournalEntry[];
   version: string;
   quote?: string;
-  themeMode?: 'light' | 'dark';
+  themeMode?: 'light' | 'dark' | 'system';
   themeColor?: string;
   themeId?: string;
   customThemes?: CustomTheme[];
   animationsEnabled?: boolean;
+  navPosition?: 'bottom' | 'left' | 'right';
 }

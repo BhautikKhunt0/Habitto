@@ -9,7 +9,7 @@ import { isTaskScheduledOnDate, cn } from "../lib/utils";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import { Task } from "../types";
-import { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
 
 export function Dashboard() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -20,6 +20,7 @@ export function Dashboard() {
   const toggleCompletion = useStore((state) => state.toggleCompletion);
   const quote = useStore((state) => state.quote);
   const setQuote = useStore((state) => state.setQuote);
+  const animationsEnabled = useStore(state => state.animationsEnabled);
 
   const [isEditingQuote, setIsEditingQuote] = useState(false);
   const [tempQuote, setTempQuote] = useState(quote || "Consistency is the only bridge between goals and accomplishment.");
@@ -40,7 +41,6 @@ export function Dashboard() {
     setIsEditingQuote(false);
   };
 
-  // Calendar logic
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart);
@@ -51,23 +51,23 @@ export function Dashboard() {
   const handleToggle = (taskId: string, dateStr: string) => {
     toggleCompletion(taskId, dateStr);
     
-    // Check if all tasks for this date are now completed
     const existing = completions.find(c => c.taskId === taskId && c.date === dateStr);
     if (!existing) {
-      // It was just checked. Are all tasks for this date completed now?
       const scheduledTasks = tasks.filter(t => isTaskScheduledOnDate(t, dateStr));
       const completedTasksIds = new Set(
         completions.filter(c => c.date === dateStr).map(c => c.taskId)
       );
-      completedTasksIds.add(taskId); // Because we just completed it
+      completedTasksIds.add(taskId); 
       
       if (scheduledTasks.length > 0 && scheduledTasks.every(t => completedTasksIds.has(t.id))) {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#8b5cf6', '#a855f7', '#d946ef', '#14b8a6']
-        });
+        if (animationsEnabled) {
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#000000', '#ffffff', '#888888']
+          });
+        }
       }
     }
   };
@@ -79,7 +79,6 @@ export function Dashboard() {
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
   const selectedTasks = getTasksForDate(selectedDate);
   
-  // Quick calculation for monthly flow (progress)
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
   let totalScheduled = 0;
   let totalCompleted = 0;
@@ -99,173 +98,164 @@ export function Dashboard() {
   const progressPercent = totalScheduled > 0 ? Math.round((totalCompleted / totalScheduled) * 100) : 0;
 
   return (
-    <div className="flex flex-col xl:flex-row gap-8 items-start">
-      {/* Left Column: Progress & Calendar */}
-      <div className="flex-1 w-full space-y-8">
+    <div className="flex flex-col xl:flex-row gap-12 items-start pt-4">
+      
+      {/* Left Column */}
+      <div className="flex-1 w-full space-y-12">
         
-        {/* Progress Bento */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 flex items-center gap-6 relative overflow-hidden group hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-theme-accent/30 transition-all duration-300">
-            <div className="absolute inset-0 bg-theme-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="48" fill="none" stroke="var(--border-color)" strokeWidth="2" />
-                <circle 
-                  cx="50" cy="50" r="48" fill="none" 
-                  stroke="var(--accent-color, #ddb7ff)" 
-                  strokeWidth="2" 
-                  strokeDasharray="301" 
-                  strokeDashoffset={301 - (301 * progressPercent) / 100}
-                  strokeLinecap="round"
-                  className="transition-all duration-1000 ease-out"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-light text-theme-accent">{progressPercent}%</span>
-              </div>
-            </div>
-            <div>
-              <h2 className="text-xl font-light text-theme-text mb-1">Monthly Flow</h2>
-              <p className="text-sm text-theme-muted">
-                {progressPercent === 100 ? "Perfect month!" : progressPercent > 70 ? "On track." : "Keep pushing."}
+        {/* Quote Block (Stark Typography) */}
+        <div className="group relative">
+          {isEditingQuote ? (
+            <textarea
+              ref={quoteRef}
+              value={tempQuote}
+              onChange={e => setTempQuote(e.target.value)}
+              onBlur={handleQuoteSave}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleQuoteSave();
+                }
+              }}
+              className="w-full bg-transparent font-display text-3xl md:text-5xl font-light text-theme-text leading-tight md:leading-[1.1] outline-none resize-none overflow-hidden"
+              rows={3}
+            />
+          ) : (
+            <blockquote className="cursor-pointer relative" onClick={() => setIsEditingQuote(true)}>
+              <p className="font-display text-3xl md:text-5xl font-light text-theme-text leading-tight md:leading-[1.1] tracking-tight pr-8">
+                {quote || 'Consistency is the only bridge between goals and accomplishment.'}
               </p>
-            </div>
-          </div>
-          
-          <div className="bg-theme-surface border border-theme-border rounded-3xl p-6 flex items-center relative overflow-hidden group hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-theme-accent/30 transition-all duration-300">
-             <div className="absolute top-0 left-0 w-1 h-full bg-theme-accent/30 group-hover:bg-theme-accent transition-colors duration-300" />
-             <div className="pl-4 relative z-10 w-full flex flex-col justify-center">
-               {isEditingQuote ? (
-                 <textarea
-                   ref={quoteRef}
-                   value={tempQuote}
-                   onChange={e => setTempQuote(e.target.value)}
-                   onBlur={handleQuoteSave}
-                   onKeyDown={e => {
-                     if (e.key === 'Enter' && !e.shiftKey) {
-                       e.preventDefault();
-                       handleQuoteSave();
-                     }
-                   }}
-                   className="w-full bg-transparent text-xl md:text-2xl font-light text-theme-text opacity-90 leading-snug outline-none resize-none overflow-hidden"
-                   rows={3}
-                 />
-               ) : (
-                 <blockquote className="cursor-pointer relative" onClick={() => setIsEditingQuote(true)}>
-                   <p className="text-xl md:text-2xl font-light text-theme-text opacity-90 leading-snug pr-8">
-                     "{quote || 'Consistency is the only bridge between goals and accomplishment.'}"
-                   </p>
-                   <button className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity text-theme-muted hover:text-theme-text">
-                     <Edit3 className="w-4 h-4" />
-                   </button>
-                 </blockquote>
-               )}
-             </div>
-          </div>
+              <button className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity text-theme-muted hover:text-theme-text mt-2">
+                <Edit3 className="w-5 h-5" />
+              </button>
+            </blockquote>
+          )}
         </div>
 
-        {/* Calendar */}
-        <div className="bg-transparent mt-8">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-light tracking-wide text-theme-text">
-              {format(currentMonth, 'MMMM')}
-            </h2>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                className="p-2 rounded-full text-theme-muted hover:bg-theme-border hover:text-theme-text transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button 
-                onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                className="p-2 rounded-full text-theme-muted hover:bg-theme-border hover:text-theme-text transition-colors"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
+        {/* Structural Metrics & Calendar Bento */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <div className="bg-theme-bg border border-theme-border rounded-[2rem] p-8 flex flex-col justify-between">
+            <h2 className="text-sm font-medium text-theme-muted uppercase tracking-widest mb-8">Monthly Flow</h2>
+            <div className="flex items-end justify-between">
+              <div className="text-7xl font-display font-light text-theme-text tracking-tighter">
+                {progressPercent}<span className="text-4xl text-theme-muted">%</span>
+              </div>
+              <div className="w-16 h-16 shrink-0 relative">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="48" fill="none" stroke="var(--border-color)" strokeWidth="4" />
+                  <circle 
+                    cx="50" cy="50" r="48" fill="none" 
+                    stroke="var(--text-primary)" 
+                    strokeWidth="4" 
+                    strokeDasharray="301" 
+                    strokeDashoffset={301 - (301 * progressPercent) / 100}
+                    strokeLinecap="round"
+                    className="transition-all duration-1000 ease-out"
+                  />
+                </svg>
+              </div>
+            </div>
+            <p className="mt-6 text-sm text-theme-muted">
+              {progressPercent === 100 ? "Flawless execution." : progressPercent > 70 ? "Momentum is building." : "Requires focus."}
+            </p>
+          </div>
+
+          <div className="bg-theme-bg border border-theme-border rounded-[2rem] p-6 md:p-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-medium text-theme-text">
+                {format(currentMonth, 'MMMM yyyy')}
+              </h2>
+              <div className="flex gap-1">
+                <button 
+                  onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                  className="p-1.5 rounded-full text-theme-muted hover:bg-theme-border hover:text-theme-text transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                  className="p-1.5 rounded-full text-theme-muted hover:bg-theme-border hover:text-theme-text transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-7 gap-1">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                <div key={`header-${i}`} className="text-center text-[10px] font-semibold tracking-widest text-theme-muted py-2">
+                  {day}
+                </div>
+              ))}
+              
+              {days.map((day) => {
+                const dayStr = format(day, 'yyyy-MM-dd');
+                const isSelected = isSameDay(day, selectedDate);
+                const isCurrentMonth = isSameMonth(day, currentMonth);
+                const isTodayDate = isToday(day);
+                
+                const dayTasks = getTasksForDate(day);
+                const completedTasksCount = dayTasks.filter(t => 
+                  completions.some(c => c.taskId === t.id && c.date === dayStr)
+                ).length;
+                
+                const allDone = dayTasks.length > 0 && completedTasksCount === dayTasks.length;
+                const someDone = dayTasks.length > 0 && completedTasksCount > 0 && completedTasksCount < dayTasks.length;
+
+                return (
+                  <button
+                    key={day.toString()}
+                    onClick={() => setSelectedDate(day)}
+                    className={cn(
+                      "aspect-square flex flex-col items-center justify-center rounded-xl relative transition-all duration-200 group",
+                      isSelected ? "bg-theme-text text-theme-bg" : "hover:bg-theme-surface",
+                      !isCurrentMonth && !isSelected && "opacity-20",
+                      isTodayDate && !isSelected && "ring-1 ring-theme-text ring-inset"
+                    )}
+                  >
+                    <span className={cn(
+                      "text-xs font-medium",
+                      isTodayDate && !isSelected && "text-theme-text",
+                      !isTodayDate && !isSelected && "text-theme-muted group-hover:text-theme-text"
+                    )}>
+                      {format(day, 'd')}
+                    </span>
+                    
+                    {dayTasks.length > 0 && (
+                      <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                        {allDone ? (
+                          <div className={cn("w-1 h-1 rounded-full", isSelected ? "bg-theme-bg" : "bg-theme-text")} />
+                        ) : someDone ? (
+                          <div className={cn("w-1 h-1 rounded-full", isSelected ? "bg-theme-bg/50" : "bg-theme-text/40")} />
+                        ) : (
+                          <div className={cn("w-1 h-1 rounded-full", isSelected ? "bg-theme-bg/20" : "bg-theme-border")} />
+                        )}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
-          
-          <div className="grid grid-cols-7 gap-0 mb-4 border-l border-t border-theme-border">
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-              <div key={`header-${i}`} className="text-center text-xs font-light tracking-widest text-theme-muted py-4 border-r border-b border-theme-border">
-                {day}
-              </div>
-            ))}
-            
-            {days.map((day, dayIdx) => {
-              const dayStr = format(day, 'yyyy-MM-dd');
-              const isSelected = isSameDay(day, selectedDate);
-              const isCurrentMonth = isSameMonth(day, currentMonth);
-              const isTodayDate = isToday(day);
-              
-              const dayTasks = getTasksForDate(day);
-              const completedTasksCount = dayTasks.filter(t => 
-                completions.some(c => c.taskId === t.id && c.date === dayStr)
-              ).length;
-              
-              const allDone = dayTasks.length > 0 && completedTasksCount === dayTasks.length;
 
-              return (
-                <button
-                  key={day.toString()}
-                  onClick={() => setSelectedDate(day)}
-                  className={cn(
-                    "aspect-square flex flex-col items-center justify-center relative transition-all duration-200 group border-r border-b border-theme-border",
-                    isSelected 
-                      ? "bg-theme-accent/5" 
-                      : "hover:bg-theme-surface",
-                    !isCurrentMonth && "opacity-30",
-                    isTodayDate && !isSelected && "bg-theme-surface"
-                  )}
-                >
-                  {isSelected && <div className="absolute inset-0 border border-theme-accent/30 z-10" />}
-                  <span className={cn(
-                    "text-sm md:text-base font-light",
-                    isTodayDate && "text-theme-accent font-medium",
-                    !isTodayDate && !isSelected && "text-theme-muted group-hover:text-theme-text",
-                    isSelected && "text-theme-accent font-medium"
-                  )}>
-                    {format(day, 'd')}
-                  </span>
-                  
-                  {/* Dots indicator */}
-                  {dayTasks.length > 0 && (
-                    <div className="flex gap-1 mt-2 absolute bottom-2 md:bottom-4">
-                      {allDone ? (
-                        <div className="w-1.5 h-1.5 rounded-full bg-theme-accent shadow-[0_0_8px_var(--accent-color)]" />
-                      ) : (
-                        dayTasks.slice(0, 3).map((t, i) => (
-                          <div 
-                            key={i} 
-                            className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full opacity-60"
-                            style={{ backgroundColor: t.color || 'var(--accent-color)' }}
-                          />
-                        ))
-                      )}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
         </div>
       </div>
 
-      {/* Right Sidebar: Selected Date Tasks */}
-      <div className="w-full xl:w-96 shrink-0 bg-transparent xl:sticky xl:top-6">
+      {/* Right Sidebar */}
+      <div className="w-full xl:w-[400px] shrink-0 bg-transparent xl:sticky xl:top-8 pt-4">
         <div className="mb-8">
-          <h2 className="text-2xl font-light tracking-wide text-theme-text mb-1">
-            {isToday(selectedDate) ? "Today's Focus" : format(selectedDate, 'EEEE, MMM d')}
+          <h2 className="text-3xl font-display font-medium text-theme-text mb-2">
+            {isToday(selectedDate) ? "Today" : format(selectedDate, 'MMM d')}
           </h2>
-          <p className="text-theme-muted text-sm">
+          <p className="text-theme-muted text-sm font-medium">
             {selectedTasks.length === 0 
-              ? "No tasks scheduled for this day." 
-              : `${selectedTasks.length} task${selectedTasks.length === 1 ? '' : 's'} scheduled.`}
+              ? "Zero tasks scheduled." 
+              : `${selectedTasks.length} TASK${selectedTasks.length === 1 ? '' : 'S'}`}
           </p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           <AnimatePresence mode="popLayout">
             {selectedTasks.map((task) => {
               const isCompleted = completions.some(c => c.taskId === task.id && c.date === selectedDateStr);
@@ -274,7 +264,8 @@ export function Dashboard() {
                   key={task.id} 
                   task={task} 
                   isCompleted={isCompleted} 
-                  onToggle={() => handleToggle(task.id, selectedDateStr)} 
+                  onToggle={() => handleToggle(task.id, selectedDateStr)}
+                  animationsEnabled={animationsEnabled}
                 />
               )
             })}
@@ -285,20 +276,20 @@ export function Dashboard() {
   );
 }
 
-function TaskItem({ task, isCompleted, onToggle }: { key?: string | number, task: Task, isCompleted: boolean, onToggle: () => void }) {
+function TaskItem({ task, isCompleted, onToggle, animationsEnabled, key }: { task: Task, isCompleted: boolean, onToggle: () => void, animationsEnabled: boolean, key?: React.Key }) {
   return (
     <motion.label
-      layout
-      initial={{ opacity: 0, y: 10 }}
+      layout={animationsEnabled}
+      initial={animationsEnabled ? { opacity: 0, y: 10 } : { opacity: 1, y: 0 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      whileHover={{ scale: 1.02, translateY: -2 }}
-      whileTap={{ scale: 0.98 }}
+      exit={animationsEnabled ? { opacity: 0, scale: 0.95 } : { opacity: 0 }}
+      whileHover={animationsEnabled ? { scale: 1.01 } : {}}
+      whileTap={animationsEnabled ? { scale: 0.99 } : {}}
       className={cn(
-        "flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 border",
+        "flex items-center gap-4 p-4 rounded-[1.25rem] cursor-pointer transition-all duration-300",
         isCompleted 
-          ? "bg-theme-surface border-theme-border/50 opacity-60" 
-          : "bg-theme-surface border-theme-border hover:border-theme-accent/30 hover:bg-theme-accent/5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.1)]"
+          ? "bg-transparent opacity-50" 
+          : "bg-theme-surface border border-theme-border hover:border-theme-text/20 shadow-sm"
       )}
     >
       <div className="relative flex items-center justify-center shrink-0">
@@ -309,13 +300,13 @@ function TaskItem({ task, isCompleted, onToggle }: { key?: string | number, task
           className="peer sr-only"
         />
         <div className={cn(
-          "w-5 h-5 md:w-6 md:h-6 rounded-sm border transition-all duration-300 flex items-center justify-center",
+          "w-6 h-6 rounded-full border-[1.5px] transition-all duration-300 flex items-center justify-center",
           isCompleted 
-            ? "border-transparent bg-theme-accent/30 shadow-[0_0_10px_var(--accent-color)]" 
-            : "border-theme-border bg-transparent peer-hover:border-theme-accent/40"
+            ? "border-theme-text bg-theme-text" 
+            : "border-theme-text/30 bg-transparent peer-hover:border-theme-text/60"
         )}>
           <Check className={cn(
-            "w-3.5 h-3.5 text-theme-accent transition-transform duration-300",
+            "w-3.5 h-3.5 text-theme-bg transition-transform duration-300",
             isCompleted ? "scale-100" : "scale-0"
           )} strokeWidth={3} />
         </div>
@@ -323,15 +314,28 @@ function TaskItem({ task, isCompleted, onToggle }: { key?: string | number, task
       
       <div className="flex-1 min-w-0">
         <h3 className={cn(
-          "font-medium text-lg truncate transition-colors",
+          "font-medium text-base truncate transition-colors",
           isCompleted ? "text-theme-muted line-through decoration-theme-muted/50" : "text-theme-text"
         )}>
           {task.name}
         </h3>
-        {(task.category || task.channelName) && (
-          <div className="flex items-center gap-2 mt-0.5">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: task.color || 'var(--accent-color)' }} />
-            <span className="text-xs text-theme-muted truncate">{task.category || task.channelName}</span>
+        {(task.category || task.channelName || task.priority) && (
+          <div className="flex items-center gap-2 mt-1">
+            {task.priority && (
+              <span className={cn(
+                "text-[10px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded flex items-center justify-center",
+                task.priority === 'high' ? "bg-red-500/10 text-red-500" :
+                task.priority === 'medium' ? "bg-orange-500/10 text-orange-500" :
+                "bg-green-500/10 text-green-500"
+              )}>
+                {task.priority}
+              </span>
+            )}
+            {(task.category || task.channelName) && (
+              <span className="text-[11px] font-semibold tracking-wider uppercase text-theme-muted truncate">
+                {task.category || task.channelName}
+              </span>
+            )}
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Task, CompletionRecord, AppData, CustomTheme } from '../types';
+import { Task, CompletionRecord, AppData, CustomTheme, JournalEntry } from '../types';
 import { format } from 'date-fns';
 
 export const DEFAULT_THEMES = [
@@ -13,23 +13,32 @@ export const DEFAULT_THEMES = [
 ];
 
 interface StoreState extends AppData {
-  themeMode: 'light' | 'dark';
+  themeMode: 'light' | 'dark' | 'system';
   themeColor: string;
   themeId: string;
   customThemes: CustomTheme[];
+  journalEntries: JournalEntry[];
   quote: string;
   animationsEnabled: boolean;
-  setThemeMode: (mode: 'light' | 'dark') => void;
+  navPosition: 'bottom' | 'left' | 'right';
+  setThemeMode: (mode: 'light' | 'dark' | 'system') => void;
   setThemeColor: (color: string) => void;
   setThemeId: (id: string) => void;
   addCustomTheme: (theme: CustomTheme) => void;
+  updateCustomTheme: (id: string, theme: CustomTheme) => void;
   deleteCustomTheme: (id: string) => void;
   setQuote: (quote: string) => void;
   setAnimationsEnabled: (enabled: boolean) => void;
+  setNavPosition: (position: 'bottom' | 'left' | 'right') => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'archived'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string, keepHistory: boolean) => void;
   toggleCompletion: (taskId: string, date: string) => void;
+  
+  addJournalEntry: (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => void;
+  deleteJournalEntry: (id: string) => void;
+
   importData: (data: AppData) => void;
   clearData: () => void;
 }
@@ -39,6 +48,7 @@ export const useStore = create<StoreState>()(
     (set, get) => ({
       tasks: [],
       completions: [],
+      journalEntries: [],
       version: '1.0',
       quote: "Consistency is the only bridge between goals and accomplishment.",
       themeMode: 'dark',
@@ -46,14 +56,22 @@ export const useStore = create<StoreState>()(
       themeId: 'purple',
       customThemes: [],
       animationsEnabled: true,
+      navPosition: 'bottom',
       
       setThemeMode: (themeMode) => set({ themeMode }),
       setThemeColor: (themeColor) => set({ themeColor }),
       setThemeId: (themeId) => set({ themeId }),
       addCustomTheme: (theme) => set((state) => ({ customThemes: [...state.customThemes, theme] })),
-      deleteCustomTheme: (id) => set((state) => ({ customThemes: state.customThemes.filter(t => t.id !== id) })),
+      updateCustomTheme: (id, theme) => set((state) => ({
+        customThemes: state.customThemes.map(t => t.id === id ? theme : t)
+      })),
+      deleteCustomTheme: (id) => set((state) => ({
+        customThemes: state.customThemes.filter(t => t.id !== id),
+        themeId: state.themeId === id ? 'purple' : state.themeId
+      })),
       setQuote: (quote) => set({ quote }),
       setAnimationsEnabled: (animationsEnabled) => set({ animationsEnabled }),
+      setNavPosition: (navPosition) => set({ navPosition }),
 
       addTask: (taskData) => set((state) => ({
         tasks: [
@@ -90,9 +108,30 @@ export const useStore = create<StoreState>()(
         }
       }),
 
+      addJournalEntry: (entryData) => set((state) => ({
+        journalEntries: [
+          ...state.journalEntries,
+          {
+            ...entryData,
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        ]
+      })),
+
+      updateJournalEntry: (id, updates) => set((state) => ({
+        journalEntries: state.journalEntries.map(e => e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e)
+      })),
+
+      deleteJournalEntry: (id) => set((state) => ({
+        journalEntries: state.journalEntries.filter(e => e.id !== id)
+      })),
+
       importData: (data) => set(() => ({
         tasks: data.tasks,
         completions: data.completions,
+        journalEntries: data.journalEntries || [],
         version: data.version || '1.0',
         quote: data.quote || "Consistency is the only bridge between goals and accomplishment.",
         themeMode: data.themeMode || 'dark',
@@ -100,9 +139,10 @@ export const useStore = create<StoreState>()(
         themeId: data.themeId || 'purple',
         customThemes: data.customThemes || [],
         animationsEnabled: data.animationsEnabled !== undefined ? data.animationsEnabled : true,
+        navPosition: data.navPosition || 'bottom',
       })),
 
-      clearData: () => set(() => ({ tasks: [], completions: [] }))
+      clearData: () => set(() => ({ tasks: [], completions: [], journalEntries: [] }))
     }),
     {
       name: 'habit-tracker-data',

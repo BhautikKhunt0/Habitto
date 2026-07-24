@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { Task } from "../types";
+import { Task, Frequency } from "../types";
 import { differenceInDays, parseISO, startOfDay, getDay } from "date-fns";
 
 export function cn(...inputs: ClassValue[]) {
@@ -12,6 +12,21 @@ export function hexToRgb(hex: string) {
   return result ? `${parseInt(result[1], 16)} ${parseInt(result[2], 16)} ${parseInt(result[3], 16)}` : null;
 }
 
+export function formatFrequency(frequency: Frequency): string {
+  switch (frequency.type) {
+    case 'daily': return 'Daily';
+    case 'alternate': return 'Every other day';
+    case 'weekly': {
+      if (frequency.daysOfWeek.length === 7) return 'Every day';
+      if (frequency.daysOfWeek.length === 0) return 'No days selected';
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return frequency.daysOfWeek.map(d => days[d]).join(', ');
+    }
+    case 'custom': return `Every ${frequency.interval} days`;
+    default: return 'Custom';
+  }
+}
+
 export function isTaskScheduledOnDate(task: Task, date: Date | string): boolean {
   if (task.archived) return false;
 
@@ -19,12 +34,10 @@ export function isTaskScheduledOnDate(task: Task, date: Date | string): boolean 
   const targetStart = startOfDay(targetDate);
   const createdStart = startOfDay(parseISO(task.createdAt));
 
-  // If the target date is before the task was created, it's not scheduled.
   if (targetStart < createdStart) {
       return false;
   }
 
-  // If the task has an end date and the target date is after it, it's not scheduled.
   if (task.endDate) {
     const endDateStart = startOfDay(parseISO(task.endDate));
     if (targetStart > endDateStart) {

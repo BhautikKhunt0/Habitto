@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist", ui-monospace, SFMono-Regular, monospace;
-
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  
   --color-theme-bg: var(--bg-color);
   --color-theme-surface: var(--surface-color);
   --color-theme-text: var(--text-primary);
@@ -14,25 +14,28 @@
 }
 
 :root {
-  --bg-color: #fafafa;
+  --bg-color: #f7f7f5;
   --surface-color: #ffffff;
-  --text-primary: #09090b;
-  --text-secondary: #71717a;
-  --border-color: rgba(0, 0, 0, 0.08);
-  --accent-rgb: 221 183 255;
+  --text-primary: #111110;
+  --text-secondary: #70706b;
+  --border-color: rgba(17, 17, 16, 0.08);
+  --accent-rgb: 0 0 0;
 }
 
 :root.dark {
-  --bg-color: #09090b; 
-  --surface-color: #121214;
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --border-color: rgba(255, 255, 255, 0.1);
+  --bg-color: #0c0c0c; 
+  --surface-color: #161616;
+  --text-primary: #f4f4f4;
+  --text-secondary: #8c8c8c;
+  --border-color: rgba(244, 244, 244, 0.1);
+  --accent-rgb: 255 255 255;
 }
 
 body {
   background-color: var(--bg-color);
   color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Hide scrollbar for cleaner UI */
