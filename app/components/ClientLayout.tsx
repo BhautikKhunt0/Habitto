@@ -199,7 +199,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
 
         {/* Scrollable Content wrapper */}
         <div className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-12 pb-40">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="popLayout">
               {isLoaded && (
                 <motion.div
                   key={pathname}
