@@ -55,7 +55,7 @@ export const useStore = create<StoreState>()(
       themeColor: '#ddb7ff',
       themeId: 'purple',
       customThemes: [],
-      animationsEnabled: true,
+      animationsEnabled: false,
       navPosition: 'bottom',
       
       setThemeMode: (themeMode) => set({ themeMode }),
@@ -138,7 +138,7 @@ export const useStore = create<StoreState>()(
         themeColor: data.themeColor || '#ddb7ff',
         themeId: data.themeId || 'purple',
         customThemes: data.customThemes || [],
-        animationsEnabled: data.animationsEnabled !== undefined ? data.animationsEnabled : true,
+        animationsEnabled: data.animationsEnabled !== undefined ? data.animationsEnabled : false,
         navPosition: data.navPosition || 'bottom',
       })),
 
