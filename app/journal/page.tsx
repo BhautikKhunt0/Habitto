@@ -1,9 +1,11 @@
+"use client";
+
 import { useState } from "react";
-import { useStore } from "../store/useStore";
-import { JournalEntry } from "../types";
+import { useStore } from "@/app/store/useStore";
+import { JournalEntry } from "@/app/types";
 import { Plus, Search, Edit2, Smile, Frown, Meh, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "../lib/utils";
+import { cn } from "@/app/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 const MOODS = [
@@ -14,7 +16,7 @@ const MOODS = [
   { id: 'awful', icon: Frown, color: 'text-red-500', bg: 'bg-red-500/10' },
 ] as const;
 
-export function Journal() {
+export default function Journal() {
   const journalEntries = useStore((state) => state.journalEntries) || [];
   const addJournalEntry = useStore((state) => state.addJournalEntry);
   const updateJournalEntry = useStore((state) => state.updateJournalEntry);

@@ -1,9 +1,12 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { LayoutDashboard, CheckSquare, BarChart2, Settings, Book, Kanban } from "lucide-react";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { cn, hexToRgb } from "../lib/utils";
-import { AnimatePresence, motion, useMotionValue } from "framer-motion";
-import { useStore, DEFAULT_THEMES } from "../store/useStore";
+import { useState, useEffect, useMemo, useRef, ReactNode } from "react";
+import { cn, hexToRgb } from "@/app/lib/utils";
+import { AnimatePresence, motion } from "framer-motion";
+import { useStore, DEFAULT_THEMES } from "@/app/store/useStore";
 
 function DockIcon({ 
   item, 
@@ -24,7 +27,7 @@ function DockIcon({
   return (
     <div className="relative group z-10">
       <Link
-        to={item.path}
+        href={item.path}
         className={cn(
           "flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full transition-all duration-300 relative",
           isActive 
@@ -47,8 +50,8 @@ function DockIcon({
   );
 }
 
-export function Layout() {
-  const location = useLocation();
+export function ClientLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
 
   const themeMode = useStore(state => state.themeMode);
   const themeId = useStore(state => state.themeId);
@@ -96,7 +99,7 @@ export function Layout() {
     if (mainRef.current) {
       mainRef.current.scrollTop = 0;
     }
-  }, [location.pathname]);
+  }, [pathname]);
 
   const activeColor = useMemo(() => {
     const allThemes = [...DEFAULT_THEMES, ...customThemes];
@@ -134,9 +137,49 @@ export function Layout() {
     { name: "Settings", path: "/settings", icon: Settings },
   ];
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    // Smooth entry
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="flex h-screen w-full bg-theme-bg text-theme-text font-sans selection:bg-theme-accent/30 selection:text-theme-accent transition-colors duration-300 relative overflow-hidden">
       
+      <AnimatePresence>
+        {!isLoaded && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, filter: "blur(10px)" }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed inset-0 z-[999] bg-theme-bg flex flex-col items-center justify-center pointer-events-none"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, filter: "blur(10px)" }}
+              animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col items-center gap-6"
+            >
+              <div className="w-20 h-20 rounded-[2rem] bg-theme-text flex items-center justify-center relative overflow-hidden">
+                <CheckSquare className="w-10 h-10 text-theme-bg relative z-10" />
+              </div>
+              <motion.h1
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className="text-3xl font-display font-medium tracking-tight text-theme-text"
+              >
+                Habitto
+              </motion.h1>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Immersive Background Gradients */}
       <div className="fixed top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-theme-accent/10 rounded-full blur-[140px] pointer-events-none transition-colors duration-700" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-theme-accent/10 rounded-full blur-[140px] pointer-events-none transition-colors duration-700" />
@@ -146,7 +189,7 @@ export function Layout() {
         
         {/* Top Branding (Minimal) */}
         <header className="w-full flex items-center justify-between p-6 md:px-12 md:py-8 max-w-7xl mx-auto">
-          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-xl bg-theme-text flex items-center justify-center">
               <CheckSquare className="w-4 h-4 text-theme-bg" />
             </div>
@@ -157,16 +200,18 @@ export function Layout() {
         {/* Scrollable Content wrapper */}
         <div className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-12 pb-40">
           <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, scale: 0.98, filter: "blur(4px)" }}
-                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                exit={{ opacity: 0, scale: 0.98, filter: "blur(4px)" }}
-                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className="h-full"
-              >
-                <Outlet />
-              </motion.div>
+              {isLoaded && (
+                <motion.div
+                  key={pathname}
+                  initial={{ opacity: 0, scale: 0.98, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, scale: 0.98, filter: "blur(4px)" }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="h-full"
+                >
+                  {children}
+                </motion.div>
+              )}
           </AnimatePresence>
         </div>
       </main>
@@ -200,36 +245,38 @@ export function Layout() {
       </AnimatePresence>
 
       {/* Floating Dock Navigation */}
-      <motion.nav 
-        layout
-        drag
-        dragMomentum={false}
-        dragSnapToOrigin={true}
-        onDragStart={handleDragStart}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className={cn(
-          "fixed z-50 flex items-center p-2 md:p-3 rounded-full bg-theme-surface/70 backdrop-blur-2xl border border-theme-border/50 shadow-2xl dark:shadow-[0_20px_40px_rgb(0,0,0,0.4)] cursor-grab active:cursor-grabbing",
-          navPosition === 'left' ? "left-8 top-1/2 -translate-y-1/2 flex-col gap-2 md:gap-4" : "",
-          navPosition === 'right' ? "right-8 top-1/2 -translate-y-1/2 flex-col gap-2 md:gap-4" : "",
-          navPosition === 'bottom' ? "bottom-8 left-1/2 -translate-x-1/2 flex-row gap-2 md:gap-4" : ""
-        )}
-      >
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <DockIcon
-              key={item.path}
-              item={item}
-              isActive={isActive}
-              navPosition={navPosition}
-            />
-          )
-        })}
-      </motion.nav>
+      {isLoaded && (
+        <motion.nav
+          layout
+          drag
+          dragMomentum={false}
+          dragSnapToOrigin={true}
+          onDragStart={handleDragStart}
+          onDrag={handleDrag}
+          onDragEnd={handleDragEnd}
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className={cn(
+            "fixed z-50 flex items-center p-2 md:p-3 rounded-full bg-theme-surface/70 backdrop-blur-2xl border border-theme-border/50 shadow-2xl dark:shadow-[0_20px_40px_rgb(0,0,0,0.4)] cursor-grab active:cursor-grabbing",
+            navPosition === 'left' ? "left-8 top-1/2 -translate-y-1/2 flex-col gap-2 md:gap-4" : "",
+            navPosition === 'right' ? "right-8 top-1/2 -translate-y-1/2 flex-col gap-2 md:gap-4" : "",
+            navPosition === 'bottom' ? "bottom-8 left-1/2 -translate-x-1/2 flex-row gap-2 md:gap-4" : ""
+          )}
+        >
+          {navItems.map((item) => {
+            const isActive = pathname === item.path;
+            return (
+              <DockIcon
+                key={item.path}
+                item={item}
+                isActive={isActive}
+                navPosition={navPosition}
+              />
+            )
+          })}
+        </motion.nav>
+      )}
     </div>
   );
 }

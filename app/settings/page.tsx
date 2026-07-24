@@ -1,11 +1,13 @@
+"use client";
+
 import { useState, useRef, ChangeEvent } from "react";
-import { useStore, DEFAULT_THEMES } from "../store/useStore";
+import { useStore, DEFAULT_THEMES } from "@/app/store/useStore";
 import { Trash2, Download, Upload, AlertCircle, Moon, Sun, Monitor, Palette, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "../lib/utils";
+import { cn } from "@/app/lib/utils";
 import { createPortal } from "react-dom";
 
-export function Settings() {
+export default function Settings() {
   const {
     tasks, completions,
     themeMode, setThemeMode,
