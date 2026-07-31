@@ -1,13 +1,12 @@
-"use client";
-
 import { useState } from "react";
-import { useStore } from "@/app/store/useStore";
-import { Task, Frequency } from "@/app/types";
+import { useStore } from "../store/useStore";
+import { Task, Frequency } from "../types";
 import { Plus, X, Calendar, Search, Edit2 } from "lucide-react";
-import { formatFrequency, cn } from "@/app/lib/utils";
+import { formatFrequency, cn } from "../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { TemporaryTasks } from "../components/TemporaryTasks";
 
-export default function Tasks() {
+export function Tasks() {
   const tasks = useStore((state) => state.tasks);
   const addTask = useStore((state) => state.addTask);
   const updateTask = useStore((state) => state.updateTask);
@@ -18,6 +17,7 @@ export default function Tasks() {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [activeTab, setActiveTab] = useState<"regular" | "temporary">("regular");
 
   const handleOpenModal = (task?: Task) => {
     if (task) {
@@ -46,107 +46,138 @@ export default function Tasks() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
         <h2 className="text-3xl font-display font-medium text-theme-text">Tasks</h2>
         
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-muted" />
-            <input 
-              type="text" 
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-theme-bg border border-theme-border rounded-full pl-11 pr-4 py-2.5 text-sm text-theme-text focus:outline-none focus:border-theme-text transition-colors placeholder:text-theme-muted/50"
-            />
-          </div>
-          <button 
-            onClick={() => handleOpenModal()}
-            className="flex items-center justify-center w-10 h-10 rounded-full bg-theme-text text-theme-bg hover:opacity-90 transition-opacity shrink-0"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex gap-4 mb-8 border-b border-theme-border pb-1">
-        <button 
-          onClick={() => setShowArchived(false)}
-          className={cn(
-            "pb-3 text-sm font-medium tracking-wide transition-colors relative",
-            !showArchived ? "text-theme-text" : "text-theme-muted hover:text-theme-text"
-          )}
-        >
-          Active
-          {!showArchived && <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
-        </button>
-        <button 
-          onClick={() => setShowArchived(true)}
-          className={cn(
-            "pb-3 text-sm font-medium tracking-wide transition-colors relative",
-            showArchived ? "text-theme-text" : "text-theme-muted hover:text-theme-text"
-          )}
-        >
-          Archived
-          {showArchived && <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
-        </button>
-      </div>
-
-      {filteredTasks.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-theme-border rounded-[2rem]">
-          <p className="text-theme-muted text-sm uppercase tracking-widest font-medium mb-4">No tasks found</p>
-          {!showArchived && (
+        {activeTab === "regular" && (
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-muted" />
+              <input 
+                type="text" 
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full bg-theme-bg border border-theme-border rounded-full pl-11 pr-4 py-2.5 text-sm text-theme-text focus:outline-none focus:border-theme-text transition-colors placeholder:text-theme-muted/50"
+              />
+            </div>
             <button 
               onClick={() => handleOpenModal()}
-              className="px-6 py-2.5 rounded-full border border-theme-border hover:border-theme-text text-theme-text text-sm font-medium transition-colors"
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-theme-text text-theme-bg hover:opacity-90 transition-opacity shrink-0"
             >
-              Create your first task
+              <Plus className="w-5 h-5" />
             </button>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <AnimatePresence mode="popLayout">
-            {filteredTasks.map(task => (
-              <motion.div
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                key={task.id}
-                className="bg-theme-surface border border-theme-border rounded-[2rem] p-6 group hover:border-theme-text/20 transition-all duration-300 relative flex flex-col justify-between min-h-[160px]"
-              >
-                <div>
-                  <div className="flex justify-between items-start gap-4 mb-2">
-                    <h3 className="font-display text-xl font-medium text-theme-text leading-tight">{task.name}</h3>
-                  </div>
-                  {task.notes && (
-                    <p className="text-sm text-theme-muted line-clamp-2 mt-2">{task.notes}</p>
-                  )}
-                </div>
+          </div>
+        )}
+      </div>
 
-                <div className="mt-6 flex items-center justify-between">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-semibold tracking-widest uppercase text-theme-muted">
-                    {task.priority && (
-                      <span className={cn(
-                        "px-2 py-0.5 rounded-md",
-                        task.priority === 'high' ? "bg-red-500/10 text-red-500" :
-                        task.priority === 'medium' ? "bg-orange-500/10 text-orange-500" :
-                        "bg-green-500/10 text-green-500"
-                      )}>{task.priority}</span>
-                    )}
-                    {(task.category || task.channelName) && <span>{task.category || task.channelName}</span>}
-                    <span className="w-1 h-1 rounded-full bg-theme-border" />
-                    <span>{formatFrequency(task.frequency)}</span>
-                  </div>
-                  
-                  <button 
-                    onClick={() => handleOpenModal(task)}
-                    className="w-8 h-8 rounded-full border border-theme-border flex items-center justify-center text-theme-text hover:bg-theme-text hover:text-theme-bg transition-colors opacity-0 group-hover:opacity-100"
+      <div className="flex gap-6 mb-8 border-b border-theme-border pb-1">
+        <button 
+          onClick={() => setActiveTab("regular")}
+          className={cn(
+            "pb-3 text-sm font-medium tracking-wide transition-colors relative",
+            activeTab === "regular" ? "text-theme-text" : "text-theme-muted hover:text-theme-text"
+          )}
+        >
+          Regular Tasks
+          {activeTab === "regular" && <motion.div layoutId="main-tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
+        </button>
+        <button 
+          onClick={() => setActiveTab("temporary")}
+          className={cn(
+            "pb-3 text-sm font-medium tracking-wide transition-colors relative",
+            activeTab === "temporary" ? "text-theme-text" : "text-theme-muted hover:text-theme-text"
+          )}
+        >
+          Temporary Tasks
+          {activeTab === "temporary" && <motion.div layoutId="main-tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
+        </button>
+      </div>
+
+      {activeTab === "regular" ? (
+        <>
+          <div className="flex gap-4 mb-6">
+            <button 
+              onClick={() => setShowArchived(false)}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-xs font-medium transition-colors",
+                !showArchived ? "bg-theme-text text-theme-bg" : "bg-theme-surface text-theme-text border border-theme-border"
+              )}
+            >
+              Active
+            </button>
+            <button 
+              onClick={() => setShowArchived(true)}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-xs font-medium transition-colors",
+                showArchived ? "bg-theme-text text-theme-bg" : "bg-theme-surface text-theme-text border border-theme-border"
+              )}
+            >
+              Archived
+            </button>
+          </div>
+
+          {filteredTasks.length === 0 ? (
+            <div className="text-center py-20 border border-dashed border-theme-border rounded-[2rem]">
+              <p className="text-theme-muted text-sm uppercase tracking-widest font-medium mb-4">No tasks found</p>
+              {!showArchived && (
+                <button 
+                  onClick={() => handleOpenModal()}
+                  className="px-6 py-2.5 rounded-full border border-theme-border hover:border-theme-text text-theme-text text-sm font-medium transition-colors"
+                >
+                  Create your first task
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <AnimatePresence mode="popLayout">
+                {filteredTasks.map(task => (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    key={task.id}
+                    className="bg-theme-surface border border-theme-border rounded-[2rem] p-6 group hover:border-theme-text/20 transition-all duration-300 relative flex flex-col justify-between min-h-[160px]"
                   >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                    <div>
+                      <div className="flex justify-between items-start gap-4 mb-2">
+                        <h3 className="font-display text-xl font-medium text-theme-text leading-tight">{task.name}</h3>
+                      </div>
+                      {task.notes && (
+                        <p className="text-sm text-theme-muted line-clamp-2 mt-2">{task.notes}</p>
+                      )}
+                    </div>
+
+                    <div className="mt-6 flex items-center justify-between">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-semibold tracking-widest uppercase text-theme-muted">
+                        {task.priority && (
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-md",
+                            task.priority === 'high' ? "bg-red-500/10 text-red-500" :
+                            task.priority === 'medium' ? "bg-orange-500/10 text-orange-500" :
+                            "bg-green-500/10 text-green-500"
+                          )}>{task.priority}</span>
+                        )}
+                        {(task.category || task.channelName) && <span>{task.category || task.channelName}</span>}
+                        <span className="w-1 h-1 rounded-full bg-theme-border" />
+                        <span>{formatFrequency(task.frequency)}</span>
+                      </div>
+                      
+                      <button 
+                        onClick={() => handleOpenModal(task)}
+                        className="w-8 h-8 rounded-full border border-theme-border flex items-center justify-center text-theme-text hover:bg-theme-text hover:text-theme-bg transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="max-w-2xl mx-auto">
+          <TemporaryTasks />
         </div>
       )}
 

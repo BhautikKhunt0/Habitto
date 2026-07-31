@@ -1,19 +1,17 @@
-"use client";
-
 import { 
   startOfMonth, endOfMonth, startOfWeek, endOfWeek, 
   eachDayOfInterval, format, isSameMonth, isToday, 
   addMonths, subMonths, isSameDay 
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Check, Edit3 } from "lucide-react";
-import { useStore } from "@/app/store/useStore";
-import { isTaskScheduledOnDate, cn } from "@/app/lib/utils";
+import { useStore } from "../store/useStore";
+import { isTaskScheduledOnDate, cn } from "../lib/utils";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
-import { Task } from "@/app/types";
+import { Task } from "../types";
 import React, { useRef, useEffect, useState } from "react";
 
-export default function Dashboard() {
+export function Dashboard() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
@@ -132,10 +130,10 @@ export default function Dashboard() {
         </div>
 
         {/* Structural Metrics & Calendar Bento */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
           
-          <div className="bg-theme-bg border border-theme-border rounded-[2rem] p-8 flex flex-col justify-between">
-            <h2 className="text-sm font-medium text-theme-muted uppercase tracking-widest mb-8">Monthly Flow</h2>
+          <div className="flex flex-col justify-between py-6 border-t border-theme-border/50">
+            <h2 className="text-xs font-semibold text-theme-muted uppercase tracking-widest mb-8">Monthly Flow</h2>
             <div className="flex items-end justify-between">
               <div className="text-7xl font-display font-light text-theme-text tracking-tighter">
                 {progressPercent}<span className="text-4xl text-theme-muted">%</span>
@@ -160,7 +158,7 @@ export default function Dashboard() {
             </p>
           </div>
 
-          <div className="bg-theme-bg border border-theme-border rounded-[2rem] p-6 md:p-8">
+          <div className="flex flex-col py-6 border-t border-theme-border/50">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-medium text-theme-text">
                 {format(currentMonth, 'MMMM yyyy')}
@@ -274,7 +272,7 @@ export default function Dashboard() {
   );
 }
 
-function TaskItem({ task, isCompleted, onToggle, key }: { task: Task, isCompleted: boolean, onToggle: () => void, key?: React.Key }) {
+function TaskItem({ task, isCompleted, onToggle }: { task: Task, isCompleted: boolean, onToggle: () => void, key?: React.Key }) {
   return (
     <motion.label
       layout

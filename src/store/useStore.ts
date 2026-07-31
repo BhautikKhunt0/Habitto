@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Task, CompletionRecord, AppData, CustomTheme, JournalEntry, KanbanTask } from '../types';
+import { Task, CompletionRecord, AppData, CustomTheme, JournalEntry, KanbanTask, TemporaryTask } from '../types';
 import { format } from 'date-fns';
 
 export const DEFAULT_THEMES = [
@@ -19,8 +19,9 @@ interface StoreState extends AppData {
   customThemes: CustomTheme[];
   journalEntries: JournalEntry[];
   kanbanTasks: KanbanTask[];
+  temporaryTasks: TemporaryTask[];
   quote: string;
-  navPosition: 'bottom' | 'left' | 'right';
+  navPosition: 'bottom' | 'left' | 'right' | 'bottom-right';
   setThemeMode: (mode: 'light' | 'dark' | 'system') => void;
   setThemeColor: (color: string) => void;
   setThemeId: (id: string) => void;
@@ -28,7 +29,7 @@ interface StoreState extends AppData {
   updateCustomTheme: (id: string, theme: CustomTheme) => void;
   deleteCustomTheme: (id: string) => void;
   setQuote: (quote: string) => void;
-  setNavPosition: (position: 'bottom' | 'left' | 'right') => void;
+  setNavPosition: (position: 'bottom' | 'left' | 'right' | 'bottom-right') => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'archived'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string, keepHistory: boolean) => void;
@@ -41,6 +42,13 @@ interface StoreState extends AppData {
   updateKanbanTask: (id: string, updates: Partial<KanbanTask>) => void;
   deleteKanbanTask: (id: string) => void;
 
+  addTemporaryTask: (name: string) => void;
+  toggleTemporaryTask: (id: string) => void;
+  deleteTemporaryTask: (id: string) => void;
+  updateTemporaryTask: (id: string, name: string) => void;
+  reorderTemporaryTasks: (newTasks: TemporaryTask[]) => void;
+  clearCompletedTemporaryTasks: () => void;
+
   importData: (data: AppData) => void;
   clearData: () => void;
 }
@@ -52,6 +60,7 @@ export const useStore = create<StoreState>()(
       completions: [],
       journalEntries: [],
       kanbanTasks: [],
+      temporaryTasks: [],
       version: '1.0',
       quote: "Consistency is the only bridge between goals and accomplishment.",
       themeMode: 'dark',
@@ -148,11 +157,39 @@ export const useStore = create<StoreState>()(
         kanbanTasks: state.kanbanTasks.filter(t => t.id !== id)
       })),
 
+      addTemporaryTask: (name) => set((state) => {
+        const newTask: TemporaryTask = {
+          id: crypto.randomUUID(),
+          name,
+          completed: false,
+          order: state.temporaryTasks.length,
+        };
+        return { temporaryTasks: [...state.temporaryTasks, newTask] };
+      }),
+      toggleTemporaryTask: (id) => set((state) => ({
+        temporaryTasks: state.temporaryTasks.map(t => 
+          t.id === id ? { ...t, completed: !t.completed } : t
+        )
+      })),
+      deleteTemporaryTask: (id) => set((state) => ({
+        temporaryTasks: state.temporaryTasks.filter(t => t.id !== id)
+      })),
+      updateTemporaryTask: (id, name) => set((state) => ({
+        temporaryTasks: state.temporaryTasks.map(t => 
+          t.id === id ? { ...t, name } : t
+        )
+      })),
+      reorderTemporaryTasks: (newTasks) => set({ temporaryTasks: newTasks }),
+      clearCompletedTemporaryTasks: () => set((state) => ({
+        temporaryTasks: state.temporaryTasks.filter(t => !t.completed)
+      })),
+
       importData: (data) => set(() => ({
         tasks: data.tasks,
         completions: data.completions,
         journalEntries: data.journalEntries || [],
         kanbanTasks: data.kanbanTasks || [],
+        temporaryTasks: data.temporaryTasks || [],
         version: data.version || '1.0',
         quote: data.quote || "Consistency is the only bridge between goals and accomplishment.",
         themeMode: data.themeMode || 'dark',
@@ -162,7 +199,7 @@ export const useStore = create<StoreState>()(
         navPosition: data.navPosition || 'bottom',
       })),
 
-      clearData: () => set(() => ({ tasks: [], completions: [], journalEntries: [], kanbanTasks: [] }))
+      clearData: () => set(() => ({ tasks: [], completions: [], journalEntries: [], kanbanTasks: [], temporaryTasks: [] }))
     }),
     {
       name: 'habit-tracker-data',

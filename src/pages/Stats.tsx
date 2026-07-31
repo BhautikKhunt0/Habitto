@@ -1,14 +1,13 @@
-"use client";
-
 import { useMemo, useState } from "react";
-import { useStore } from "@/app/store/useStore";
+import { useStore } from "../store/useStore";
 import { format, subDays, startOfDay, isSameDay, eachDayOfInterval, startOfYear, endOfYear, getMonth, getYear } from "date-fns";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Trophy, Flame, Target, ChevronDown } from "lucide-react";
-import { isTaskScheduledOnDate, cn } from "@/app/lib/utils";
+import { isTaskScheduledOnDate, cn } from "../lib/utils";
+import { CustomSelect } from "../components/CustomSelect";
 import { createPortal } from "react-dom";
 
-export default function Stats() {
+export function Stats() {
   const tasks = useStore((state) => state.tasks);
   const completions = useStore((state) => state.completions);
   const [selectedTaskId, setSelectedTaskId] = useState<string>("all");
@@ -164,35 +163,35 @@ export default function Stats() {
         <h2 className="text-3xl font-display font-medium text-theme-text">Analytics</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 py-8 border-y border-theme-border/50">
         
-        <div className="bg-theme-bg border border-theme-border rounded-[2rem] p-8 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-4 text-theme-muted">
-            <Flame className="w-5 h-5" />
+        <div className="flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-3 text-theme-muted">
+            <Flame className="w-4 h-4" />
             <span className="font-semibold tracking-widest uppercase text-xs">Current Streak</span>
           </div>
-          <div className="text-5xl font-display font-light text-theme-text">{stats.currentStreak} <span className="text-2xl text-theme-muted">days</span></div>
+          <div className="text-5xl font-display font-light text-theme-text">{stats.currentStreak} <span className="text-xl text-theme-muted">days</span></div>
         </div>
         
-        <div className="bg-theme-bg border border-theme-border rounded-[2rem] p-8 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-4 text-theme-muted">
-            <Trophy className="w-5 h-5" />
+        <div className="flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-3 text-theme-muted">
+            <Trophy className="w-4 h-4" />
             <span className="font-semibold tracking-widest uppercase text-xs">Best Streak</span>
           </div>
-          <div className="text-5xl font-display font-light text-theme-text">{stats.longestStreak} <span className="text-2xl text-theme-muted">days</span></div>
+          <div className="text-5xl font-display font-light text-theme-text">{stats.longestStreak} <span className="text-xl text-theme-muted">days</span></div>
         </div>
 
-        <div className="bg-theme-bg border border-theme-border rounded-[2rem] p-8 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-4 text-theme-muted">
-            <Target className="w-5 h-5" />
+        <div className="flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-3 text-theme-muted">
+            <Target className="w-4 h-4" />
             <span className="font-semibold tracking-widest uppercase text-xs">Total Completed</span>
           </div>
           <div className="text-5xl font-display font-light text-theme-text">{completions.length}</div>
         </div>
 
-        <div className="bg-theme-bg border border-theme-border rounded-[2rem] p-8 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-4 text-theme-muted">
-            <Target className="w-5 h-5" />
+        <div className="flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-3 text-theme-muted">
+            <Target className="w-4 h-4" />
             <span className="font-semibold tracking-widest uppercase text-xs">Active Tasks</span>
           </div>
           <div className="text-5xl font-display font-light text-theme-text">{tasks.filter(t => !t.archived).length}</div>
@@ -200,21 +199,18 @@ export default function Stats() {
 
       </div>
 
-      <div className="bg-theme-surface border border-theme-border rounded-[2rem] p-6 md:p-10">
+      <div className="py-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <h2 className="text-xl font-display font-medium text-theme-text">Activity (Last 30 Days)</h2>
-          <div className="relative">
-            <select
+          <div className="w-full sm:w-auto min-w-[200px]">
+            <CustomSelect
               value={selectedTaskId}
-              onChange={(e) => setSelectedTaskId(e.target.value)}
-              className="appearance-none bg-theme-bg border border-theme-border rounded-xl px-4 py-3 pr-10 text-sm text-theme-text focus:outline-none focus:border-theme-text w-full sm:w-auto min-w-[200px]"
-            >
-              <option value="all">All Tasks</option>
-              {tasks.map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-theme-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              onChange={(val) => setSelectedTaskId(val as string)}
+              options={[
+                { value: 'all', label: 'All Tasks' },
+                ...tasks.map(t => ({ value: t.id, label: t.name }))
+              ]}
+            />
           </div>
         </div>
         
@@ -239,36 +235,28 @@ export default function Stats() {
         </div>
       </div>
 
-      <div className="bg-theme-surface border border-theme-border rounded-[2rem] p-6 md:p-10">
+      <div className="py-8 border-t border-theme-border/50">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <h2 className="text-xl font-display font-medium text-theme-text">Consistency Map</h2>
           
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <select
+            <div className="min-w-[140px]">
+              <CustomSelect
                 value={heatmapMonth}
-                onChange={(e) => setHeatmapMonth(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                className="appearance-none bg-theme-bg border border-theme-border rounded-xl px-4 py-3 pr-10 text-sm text-theme-text focus:outline-none focus:border-theme-text"
-              >
-                <option value="all">All Year</option>
-                {MONTHS.map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-theme-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                onChange={(val) => setHeatmapMonth(val === 'all' ? 'all' : Number(val))}
+                options={[
+                  { value: 'all', label: 'All Year' },
+                  ...MONTHS.map(m => ({ value: m.value, label: m.label }))
+                ]}
+              />
             </div>
             
-            <div className="relative">
-              <select
+            <div className="min-w-[100px]">
+              <CustomSelect
                 value={heatmapYear}
-                onChange={(e) => setHeatmapYear(parseInt(e.target.value))}
-                className="appearance-none bg-theme-bg border border-theme-border rounded-xl px-4 py-3 pr-10 text-sm text-theme-text focus:outline-none focus:border-theme-text"
-              >
-                {availableYears.map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-theme-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                onChange={(val) => setHeatmapYear(Number(val))}
+                options={availableYears.map(year => ({ value: year, label: year.toString() }))}
+              />
             </div>
           </div>
         </div>

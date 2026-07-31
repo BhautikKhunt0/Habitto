@@ -1,13 +1,11 @@
-"use client";
-
 import { useState, useRef, ChangeEvent } from "react";
-import { useStore, DEFAULT_THEMES } from "@/app/store/useStore";
+import { useStore, DEFAULT_THEMES } from "../store/useStore";
 import { Trash2, Download, Upload, AlertCircle, Moon, Sun, Monitor, Palette, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/app/lib/utils";
+import { cn } from "../lib/utils";
 import { createPortal } from "react-dom";
 
-export default function Settings() {
+export function Settings() {
   const {
     tasks, completions,
     themeMode, setThemeMode,
@@ -120,9 +118,9 @@ export default function Settings() {
         <h2 className="text-3xl font-display font-medium text-theme-text">Settings</h2>
       </div>
 
-      <div className="bg-theme-surface border border-theme-border rounded-[2rem] overflow-hidden">
+      <div className="flex flex-col">
         
-        <div className="p-8 md:p-10 border-b border-theme-border">
+        <div className="py-10 border-t border-theme-border/50">
           <h2 className="text-xl font-display font-medium text-theme-text mb-6">Appearance</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -245,7 +243,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="p-8 md:p-10 border-b border-theme-border">
+        <div className="py-10 border-t border-theme-border/50">
           <h2 className="text-xl font-display font-medium text-theme-text mb-4">Data Management</h2>
           <p className="text-theme-muted mb-8 max-w-xl text-sm">
             All your data is stored locally in this browser. To back up your data or move it to another device, use the export and import tools below.
@@ -277,7 +275,7 @@ export default function Settings() {
           </div>
         </div>
         
-        <div className="p-8 md:p-10 bg-[#ff3b30]/5">
+        <div className="py-10 border-t border-theme-border/50">
           <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">

@@ -53,16 +53,24 @@ export interface KanbanTask {
   order: number;
 }
 
+export interface TemporaryTask {
+  id: string;
+  name: string;
+  completed: boolean;
+  order: number;
+}
+
 export interface AppData {
   tasks: Task[];
   completions: CompletionRecord[];
   journalEntries?: JournalEntry[];
   kanbanTasks?: KanbanTask[];
+  temporaryTasks?: TemporaryTask[];
   version: string;
   quote?: string;
   themeMode?: 'light' | 'dark' | 'system';
   themeColor?: string;
   themeId?: string;
   customThemes?: CustomTheme[];
-  navPosition?: 'bottom' | 'left' | 'right';
+  navPosition?: 'bottom' | 'left' | 'right' | 'bottom-right';
 }

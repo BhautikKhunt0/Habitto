@@ -1,10 +1,8 @@
-"use client";
-
 import { MeasuringStrategy } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import React, { useState, useEffect, useCallback, forwardRef } from 'react';
-import { useStore } from '@/app/store/useStore';
-import { KanbanTask } from '@/app/types';
+import { useStore } from '../store/useStore';
+import { KanbanTask } from '../types';
 import { 
   DndContext, 
   DragOverlay, 
@@ -30,7 +28,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Plus, X, Flag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/app/lib/utils';
+import { cn } from '../lib/utils';
+import { CustomSelect } from '../components/CustomSelect';
 import { createPortal } from 'react-dom';
 
 const COLUMNS: { id: KanbanTask['status'], title: string }[] = [
@@ -39,7 +38,7 @@ const COLUMNS: { id: KanbanTask['status'], title: string }[] = [
   { id: 'done', title: 'Done' }
 ];
 
-export default function Kanban() {
+export function Kanban() {
   const kanbanTasks = useStore(state => state.kanbanTasks) || [];
   const addKanbanTask = useStore(state => state.addKanbanTask);
   const updateKanbanTask = useStore(state => state.updateKanbanTask);
@@ -253,7 +252,7 @@ export default function Kanban() {
   );
 }
 
-function KanbanColumn({ id, title, tasks, onEdit, onDelete, key }: { id: string, title: string, tasks: KanbanTask[], onEdit: (t: KanbanTask) => void, onDelete: (id: string) => void, key?: React.Key }) {
+function KanbanColumn({ id, title, tasks, onEdit, onDelete }: { id: string, title: string, tasks: KanbanTask[], onEdit: (t: KanbanTask) => void, onDelete: (id: string) => void, key?: React.Key }) {
   const { setNodeRef } = useDroppable({
     id: id,
     data: {
@@ -284,7 +283,7 @@ function KanbanColumn({ id, title, tasks, onEdit, onDelete, key }: { id: string,
   );
 }
 
-function SortableTask({ task, onEdit, onDelete, key }: { task: KanbanTask, onEdit: () => void, onDelete: () => void, key?: React.Key }) {
+function SortableTask({ task, onEdit, onDelete }: { task: KanbanTask, onEdit: () => void, onDelete: () => void, key?: React.Key }) {
   const {
     attributes,
     listeners,
@@ -455,29 +454,27 @@ function TaskModal({ onClose, task }: { onClose: () => void, task: KanbanTask | 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-xs font-semibold tracking-widest uppercase text-theme-muted">Priority</label>
-              <select 
+              <CustomSelect 
                 value={priority}
-                onChange={e => setPriority(e.target.value as any)}
-                className="w-full bg-theme-bg border border-theme-border rounded-2xl px-5 py-3 text-theme-text focus:outline-none focus:border-theme-text/30 focus:ring-1 focus:ring-theme-text/30 transition-all appearance-none"
-    
-          >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
+                onChange={val => setPriority(val as any)}
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'high', label: 'High' }
+                ]}
+              />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold tracking-widest uppercase text-theme-muted">Status</label>
-              <select 
+              <CustomSelect 
                 value={status}
-                onChange={e => setStatus(e.target.value as any)}
-                className="w-full bg-theme-bg border border-theme-border rounded-2xl px-5 py-3 text-theme-text focus:outline-none focus:border-theme-text/30 focus:ring-1 focus:ring-theme-text/30 transition-all appearance-none"
-    
-          >
-                <option value="todo">To Do</option>
-                <option value="in-progress">In Progress</option>
-                <option value="done">Done</option>
-              </select>
+                onChange={val => setStatus(val as any)}
+                options={[
+                  { value: 'todo', label: 'To Do' },
+                  { value: 'in-progress', label: 'In Progress' },
+                  { value: 'done', label: 'Done' }
+                ]}
+              />
             </div>
           </div>
 
