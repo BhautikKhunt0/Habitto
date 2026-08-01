@@ -77,7 +77,7 @@ export function Tasks() {
           )}
         >
           Regular Tasks
-          {activeTab === "regular" && <motion.div layoutId="main-tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
+          {activeTab === "regular" && <motion.div layoutId="tasks-tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
         </button>
         <button 
           onClick={() => setActiveTab("temporary")}
@@ -87,7 +87,7 @@ export function Tasks() {
           )}
         >
           Temporary Tasks
-          {activeTab === "temporary" && <motion.div layoutId="main-tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
+          {activeTab === "temporary" && <motion.div layoutId="tasks-tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
         </button>
       </div>
 
@@ -131,7 +131,6 @@ export function Tasks() {
               <AnimatePresence>
                 {filteredTasks.map(task => (
                   <motion.div
-                    layout
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
