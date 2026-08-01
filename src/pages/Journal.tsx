@@ -75,7 +75,7 @@ export function Journal() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence>
             {filteredEntries.map(entry => {
               const moodData = MOODS.find(m => m.id === entry.mood);
               const MoodIcon = moodData?.icon;

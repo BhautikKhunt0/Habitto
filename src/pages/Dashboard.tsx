@@ -253,7 +253,7 @@ export function Dashboard() {
         </div>
 
         <div className="space-y-2">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence>
             {selectedTasks.map((task) => {
               const isCompleted = completions.some(c => c.taskId === task.id && c.date === selectedDateStr);
               return (
