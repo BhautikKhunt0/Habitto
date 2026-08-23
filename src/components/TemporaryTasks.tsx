@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
-import { Check, Plus, Trash2, GripVertical } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Edit2 } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -21,10 +21,48 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { TemporaryTask } from '../types';
 
-export function TemporaryTasks() {
+interface TemporaryTasksProps {
+  listId?: string;
+  title?: string;
+  isCustomList?: boolean;
+  onRenameList?: (newName: string) => void;
+  onDeleteList?: () => void;
+}
+
+export const TemporaryTasks: React.FC<TemporaryTasksProps> = ({
+  listId = 'temporary',
+  title = 'Temporary Tasks',
+  isCustomList = false,
+  onRenameList,
+  onDeleteList,
+}) => {
   const [newTaskName, setNewTaskName] = useState('');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(title);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setEditedTitle(title);
+  }, [title]);
+
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [isEditingTitle]);
+
+  const handleTitleSave = () => {
+    if (editedTitle.trim() && editedTitle !== title && onRenameList) {
+      onRenameList(editedTitle.trim());
+    } else {
+      setEditedTitle(title);
+    }
+    setIsEditingTitle(false);
+  };
   
-  const temporaryTasks = useStore((state) => state.temporaryTasks || []);
+  const allTasks = useStore((state) => state.temporaryTasks || []);
+  const temporaryTasks = allTasks.filter((t) => (t.listId || 'temporary') === listId);
   const addTemporaryTask = useStore((state) => state.addTemporaryTask);
   const reorderTemporaryTasks = useStore((state) => state.reorderTemporaryTasks);
   const clearCompletedTemporaryTasks = useStore((state) => state.clearCompletedTemporaryTasks);
@@ -44,36 +82,81 @@ export function TemporaryTasks() {
     const { active, over } = event;
     
     if (over && active.id !== over.id) {
-      const oldIndex = temporaryTasks.findIndex((t) => t.id === active.id);
-      const newIndex = temporaryTasks.findIndex((t) => t.id === over.id);
+      const oldIndex = sortedTasks.findIndex((t) => t.id === active.id);
+      const newIndex = sortedTasks.findIndex((t) => t.id === over.id);
       
-      const newTasks = arrayMove(temporaryTasks, oldIndex, newIndex).map((t, i) => ({
+      const newTasks = arrayMove(sortedTasks, oldIndex, newIndex).map((t, i) => ({
         ...t,
         order: i,
       }));
       
-      reorderTemporaryTasks(newTasks);
+      reorderTemporaryTasks(newTasks, listId);
     }
   };
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (newTaskName.trim()) {
-      addTemporaryTask(newTaskName.trim());
+      addTemporaryTask(newTaskName.trim(), listId);
       setNewTaskName('');
     }
   };
 
   const sortedTasks = [...temporaryTasks].sort((a, b) => a.order - b.order);
-  const hasCompleted = temporaryTasks.some(t => t.completed);
+  const hasCompleted = sortedTasks.some(t => t.completed);
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-display font-medium text-theme-text pl-6">Temporary Tasks</h3>
+      <div className="flex items-center justify-between mb-6 pl-6 pr-2">
+        <div className="flex items-center gap-3">
+          {isEditingTitle ? (
+            <input
+              ref={titleInputRef}
+              type="text"
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              onBlur={handleTitleSave}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleTitleSave();
+                if (e.key === 'Escape') {
+                  setEditedTitle(title);
+                  setIsEditingTitle(false);
+                }
+              }}
+              className="text-xl font-display font-medium text-theme-text bg-transparent border-b border-theme-text focus:outline-none px-0 py-0.5"
+            />
+          ) : (
+            <h3 
+              onClick={() => isCustomList && onRenameList && setIsEditingTitle(true)}
+              className={cn(
+                "text-xl font-display font-medium text-theme-text flex items-center gap-2",
+                isCustomList && "cursor-pointer group"
+              )}
+            >
+              <span>{title}</span>
+              {isCustomList && onRenameList && (
+                <Edit2 className="w-3.5 h-3.5 text-theme-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+              )}
+            </h3>
+          )}
+          {isCustomList && onDeleteList && (
+            <button
+              onClick={() => {
+                if (window.confirm(`Are you sure you want to delete the "${title}" tab and all its tasks?`)) {
+                  onDeleteList();
+                }
+              }}
+              title="Delete this tab"
+              className="p-1 text-theme-muted hover:text-red-500 rounded-lg hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
         {hasCompleted && (
           <button 
-            onClick={() => clearCompletedTemporaryTasks()}
+            onClick={() => clearCompletedTemporaryTasks(listId)}
             className="text-xs font-medium text-theme-muted hover:text-theme-text transition-colors flex items-center gap-1"
           >
             Clear completed
@@ -91,9 +174,13 @@ export function TemporaryTasks() {
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-1.5 mb-6 pl-6">
-            {sortedTasks.map((task) => (
-              <SortableTaskItem key={task.id} task={task} />
-            ))}
+            {sortedTasks.length === 0 ? (
+              <p className="text-sm text-theme-muted/60 italic py-2">No tasks in this list yet.</p>
+            ) : (
+              sortedTasks.map((task) => (
+                <SortableTaskItem key={task.id} task={task} />
+              ))
+            )}
           </div>
         </SortableContext>
       </DndContext>
@@ -103,7 +190,7 @@ export function TemporaryTasks() {
           type="text"
           value={newTaskName}
           onChange={(e) => setNewTaskName(e.target.value)}
-          placeholder="Add temporary task..."
+          placeholder={`Add task to ${title}...`}
           className="w-full bg-transparent border-b border-theme-border/50 px-2 py-2 text-sm text-theme-text placeholder-theme-muted/50 focus:outline-none focus:border-theme-text transition-colors"
         />
         <button
@@ -230,4 +317,4 @@ const SortableTaskItem: React.FC<{ task: TemporaryTask }> = ({ task }) => {
       </button>
     </div>
   );
-}
+};

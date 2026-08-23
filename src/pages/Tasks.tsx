@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useStore } from "../store/useStore";
 import { Task, Frequency } from "../types";
-import { Plus, X, Calendar, Search, Edit2 } from "lucide-react";
+import { Plus, X, Calendar, Search, Edit2, Trash2 } from "lucide-react";
 import { formatFrequency, cn } from "../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { TemporaryTasks } from "../components/TemporaryTasks";
@@ -12,12 +12,48 @@ export function Tasks() {
   const updateTask = useStore((state) => state.updateTask);
   const deleteTask = useStore((state) => state.deleteTask);
 
+  const customTaskLists = useStore((state) => state.customTaskLists || []);
+  const addCustomTaskList = useStore((state) => state.addCustomTaskList);
+  const updateCustomTaskList = useStore((state) => state.updateCustomTaskList);
+  const deleteCustomTaskList = useStore((state) => state.deleteCustomTaskList);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [activeTab, setActiveTab] = useState<"regular" | "temporary">("regular");
+  const [activeTab, setActiveTab] = useState<string>("regular");
+
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const [tabEditName, setTabEditName] = useState("");
+  const tabInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingTabId && tabInputRef.current) {
+      tabInputRef.current.focus();
+      tabInputRef.current.select();
+    }
+  }, [editingTabId]);
+
+  const handleAddNewTab = () => {
+    const newName = `List ${customTaskLists.length + 1}`;
+    const newId = addCustomTaskList(newName);
+    setActiveTab(newId);
+    setEditingTabId(newId);
+    setTabEditName(newName);
+  };
+
+  const handleSaveTabName = (id: string) => {
+    if (tabEditName.trim()) {
+      updateCustomTaskList(id, tabEditName.trim());
+    }
+    setEditingTabId(null);
+  };
+
+  const handleStartRenameTab = (id: string, currentName: string) => {
+    setEditingTabId(id);
+    setTabEditName(currentName);
+  };
 
   const handleOpenModal = (task?: Task) => {
     if (task) {
@@ -40,6 +76,8 @@ export function Tasks() {
     }
     return true;
   });
+
+  const activeCustomList = customTaskLists.find(l => l.id === activeTab);
 
   return (
     <div className="w-full pt-4">
@@ -68,26 +106,104 @@ export function Tasks() {
         )}
       </div>
 
-      <div className="flex gap-6 mb-8 border-b border-theme-border pb-1">
+      {/* Tabs list with horizontal scroll */}
+      <div className="flex items-center gap-1 md:gap-2 mb-8 border-b border-theme-border pb-1 overflow-x-auto no-scrollbar scroll-smooth">
         <button 
           onClick={() => setActiveTab("regular")}
           className={cn(
-            "pb-3 text-sm font-medium tracking-wide transition-colors relative",
+            "px-3 pb-3 pt-1 text-sm font-medium tracking-wide transition-colors relative whitespace-nowrap",
             activeTab === "regular" ? "text-theme-text" : "text-theme-muted hover:text-theme-text"
           )}
         >
           Regular Tasks
           {activeTab === "regular" && <motion.div layoutId="tasks-tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
         </button>
+
         <button 
           onClick={() => setActiveTab("temporary")}
           className={cn(
-            "pb-3 text-sm font-medium tracking-wide transition-colors relative",
+            "px-3 pb-3 pt-1 text-sm font-medium tracking-wide transition-colors relative whitespace-nowrap",
             activeTab === "temporary" ? "text-theme-text" : "text-theme-muted hover:text-theme-text"
           )}
         >
           Temporary Tasks
           {activeTab === "temporary" && <motion.div layoutId="tasks-tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
+        </button>
+
+        {customTaskLists.map((list) => {
+          const isActive = activeTab === list.id;
+          const isEditing = editingTabId === list.id;
+
+          return (
+            <div key={list.id} className="relative flex items-center group">
+              {isEditing ? (
+                <input
+                  ref={tabInputRef}
+                  type="text"
+                  value={tabEditName}
+                  onChange={(e) => setTabEditName(e.target.value)}
+                  onBlur={() => handleSaveTabName(list.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveTabName(list.id);
+                    if (e.key === 'Escape') setEditingTabId(null);
+                  }}
+                  className="pb-2.5 pt-0.5 px-2 text-sm font-medium text-theme-text bg-transparent border-b-2 border-theme-text focus:outline-none min-w-[80px] max-w-[160px]"
+                />
+              ) : (
+                <div
+                  onClick={() => setActiveTab(list.id)}
+                  onDoubleClick={() => handleStartRenameTab(list.id, list.name)}
+                  className={cn(
+                    "px-3 pb-3 pt-1 text-sm font-medium tracking-wide transition-colors relative whitespace-nowrap flex items-center gap-1.5 cursor-pointer",
+                    isActive ? "text-theme-text" : "text-theme-muted hover:text-theme-text"
+                  )}
+                >
+                  <span>{list.name}</span>
+
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartRenameTab(list.id, list.name);
+                      }}
+                      title="Rename tab"
+                      className="p-0.5 hover:text-theme-text text-theme-muted transition-colors rounded"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Delete tab "${list.name}"?`)) {
+                          deleteCustomTaskList(list.id);
+                          if (activeTab === list.id) {
+                            setActiveTab("temporary");
+                          }
+                        }
+                      }}
+                      title="Delete tab"
+                      className="p-0.5 hover:text-red-500 text-theme-muted transition-colors rounded"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {isActive && <motion.div layoutId="tasks-tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        <button
+          onClick={handleAddNewTab}
+          title="Add new tab list"
+          className="flex items-center gap-1 px-3 pb-3 pt-1 text-xs font-medium text-theme-muted hover:text-theme-text transition-colors whitespace-nowrap"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>New Tab</span>
         </button>
       </div>
 
@@ -174,9 +290,27 @@ export function Tasks() {
             </div>
           )}
         </>
+      ) : activeTab === "temporary" ? (
+        <div className="max-w-2xl mx-auto">
+          <TemporaryTasks listId="temporary" title="Temporary Tasks" />
+        </div>
+      ) : activeCustomList ? (
+        <div className="max-w-2xl mx-auto">
+          <TemporaryTasks 
+            key={activeCustomList.id}
+            listId={activeCustomList.id} 
+            title={activeCustomList.name}
+            isCustomList={true}
+            onRenameList={(newName) => updateCustomTaskList(activeCustomList.id, newName)}
+            onDeleteList={() => {
+              deleteCustomTaskList(activeCustomList.id);
+              setActiveTab("temporary");
+            }}
+          />
+        </div>
       ) : (
         <div className="max-w-2xl mx-auto">
-          <TemporaryTasks />
+          <TemporaryTasks listId="temporary" title="Temporary Tasks" />
         </div>
       )}
 

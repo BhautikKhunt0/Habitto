@@ -40,7 +40,17 @@ export function Settings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
-    const data = { tasks, completions };
+    const state = useStore.getState();
+    const data = {
+      tasks: state.tasks,
+      completions: state.completions,
+      journalEntries: state.journalEntries,
+      kanbanTasks: state.kanbanTasks,
+      temporaryTasks: state.temporaryTasks,
+      customTaskLists: state.customTaskLists,
+      customThemes: state.customThemes,
+      version: state.version || '1.0'
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -61,7 +71,7 @@ export function Settings() {
       try {
         const json = JSON.parse(event.target?.result as string);
         if (json.tasks && json.completions) {
-          useStore.setState({ tasks: json.tasks, completions: json.completions });
+          useStore.getState().importData(json);
           alert("Data imported successfully!");
         } else {
           alert("Invalid backup file format.");
@@ -75,7 +85,7 @@ export function Settings() {
   };
 
   const handleClear = () => {
-    useStore.setState({ tasks: [], completions: [] });
+    useStore.getState().clearData();
     setIsClearModalOpen(false);
   };
 

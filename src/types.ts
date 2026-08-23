@@ -53,11 +53,18 @@ export interface KanbanTask {
   order: number;
 }
 
+export interface CustomTaskList {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface TemporaryTask {
   id: string;
   name: string;
   completed: boolean;
   order: number;
+  listId?: string;
 }
 
 export interface AppData {
@@ -66,6 +73,7 @@ export interface AppData {
   journalEntries?: JournalEntry[];
   kanbanTasks?: KanbanTask[];
   temporaryTasks?: TemporaryTask[];
+  customTaskLists?: CustomTaskList[];
   version: string;
   quote?: string;
   themeMode?: 'light' | 'dark' | 'system';

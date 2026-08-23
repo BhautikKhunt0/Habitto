@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Task, CompletionRecord, AppData, CustomTheme, JournalEntry, KanbanTask, TemporaryTask } from '../types';
+import { Task, CompletionRecord, AppData, CustomTheme, JournalEntry, KanbanTask, TemporaryTask, CustomTaskList } from '../types';
 import { format } from 'date-fns';
 
 export const DEFAULT_THEMES = [
@@ -20,6 +20,7 @@ interface StoreState extends AppData {
   journalEntries: JournalEntry[];
   kanbanTasks: KanbanTask[];
   temporaryTasks: TemporaryTask[];
+  customTaskLists: CustomTaskList[];
   quote: string;
   navPosition: 'bottom' | 'left' | 'right' | 'bottom-right';
   setThemeMode: (mode: 'light' | 'dark' | 'system') => void;
@@ -42,12 +43,16 @@ interface StoreState extends AppData {
   updateKanbanTask: (id: string, updates: Partial<KanbanTask>) => void;
   deleteKanbanTask: (id: string) => void;
 
-  addTemporaryTask: (name: string) => void;
+  addCustomTaskList: (name?: string) => string;
+  updateCustomTaskList: (id: string, name: string) => void;
+  deleteCustomTaskList: (id: string) => void;
+
+  addTemporaryTask: (name: string, listId?: string) => void;
   toggleTemporaryTask: (id: string) => void;
   deleteTemporaryTask: (id: string) => void;
   updateTemporaryTask: (id: string, name: string) => void;
-  reorderTemporaryTasks: (newTasks: TemporaryTask[]) => void;
-  clearCompletedTemporaryTasks: () => void;
+  reorderTemporaryTasks: (newTasks: TemporaryTask[], listId?: string) => void;
+  clearCompletedTemporaryTasks: (listId?: string) => void;
 
   importData: (data: AppData) => void;
   clearData: () => void;
@@ -61,6 +66,7 @@ export const useStore = create<StoreState>()(
       journalEntries: [],
       kanbanTasks: [],
       temporaryTasks: [],
+      customTaskLists: [],
       version: '1.0',
       quote: "Consistency is the only bridge between goals and accomplishment.",
       themeMode: 'dark',
@@ -157,39 +163,72 @@ export const useStore = create<StoreState>()(
         kanbanTasks: state.kanbanTasks.filter(t => t.id !== id)
       })),
 
-      addTemporaryTask: (name) => set((state) => {
+      addCustomTaskList: (name) => {
+        const id = crypto.randomUUID();
+        const customTaskLists = get().customTaskLists || [];
+        const finalName = name?.trim() || `List ${customTaskLists.length + 1}`;
+        set((state) => ({
+          customTaskLists: [
+            ...(state.customTaskLists || []),
+            { id, name: finalName, createdAt: new Date().toISOString() }
+          ]
+        }));
+        return id;
+      },
+
+      updateCustomTaskList: (id, name) => set((state) => ({
+        customTaskLists: (state.customTaskLists || []).map(l => l.id === id ? { ...l, name: name.trim() || l.name } : l)
+      })),
+
+      deleteCustomTaskList: (id) => set((state) => ({
+        customTaskLists: (state.customTaskLists || []).filter(l => l.id !== id),
+        temporaryTasks: (state.temporaryTasks || []).filter(t => t.listId !== id),
+      })),
+
+      addTemporaryTask: (name, listId = 'temporary') => set((state) => {
+        const existingInList = (state.temporaryTasks || []).filter(t => (t.listId || 'temporary') === listId);
         const newTask: TemporaryTask = {
           id: crypto.randomUUID(),
           name,
           completed: false,
-          order: state.temporaryTasks.length,
+          order: existingInList.length,
+          listId,
         };
-        return { temporaryTasks: [...state.temporaryTasks, newTask] };
+        return { temporaryTasks: [...(state.temporaryTasks || []), newTask] };
       }),
+
       toggleTemporaryTask: (id) => set((state) => ({
-        temporaryTasks: state.temporaryTasks.map(t => 
+        temporaryTasks: (state.temporaryTasks || []).map(t => 
           t.id === id ? { ...t, completed: !t.completed } : t
         )
       })),
+
       deleteTemporaryTask: (id) => set((state) => ({
-        temporaryTasks: state.temporaryTasks.filter(t => t.id !== id)
+        temporaryTasks: (state.temporaryTasks || []).filter(t => t.id !== id)
       })),
+
       updateTemporaryTask: (id, name) => set((state) => ({
-        temporaryTasks: state.temporaryTasks.map(t => 
+        temporaryTasks: (state.temporaryTasks || []).map(t => 
           t.id === id ? { ...t, name } : t
         )
       })),
-      reorderTemporaryTasks: (newTasks) => set({ temporaryTasks: newTasks }),
-      clearCompletedTemporaryTasks: () => set((state) => ({
-        temporaryTasks: state.temporaryTasks.filter(t => !t.completed)
+
+      reorderTemporaryTasks: (newTasks, listId = 'temporary') => set((state) => {
+        const otherTasks = (state.temporaryTasks || []).filter(t => (t.listId || 'temporary') !== listId);
+        return { temporaryTasks: [...otherTasks, ...newTasks] };
+      }),
+
+      clearCompletedTemporaryTasks: (listId = 'temporary') => set((state) => ({
+        temporaryTasks: (state.temporaryTasks || []).filter(t => !((t.listId || 'temporary') === listId && t.completed))
       })),
 
       importData: (data) => set(() => ({
-        tasks: data.tasks,
-        completions: data.completions,
+        tasks: data.tasks || [],
+        completions: data.completions || [],
         journalEntries: data.journalEntries || [],
         kanbanTasks: data.kanbanTasks || [],
         temporaryTasks: data.temporaryTasks || [],
+        customTaskLists: data.customTaskLists || [],
         version: data.version || '1.0',
         quote: data.quote || "Consistency is the only bridge between goals and accomplishment.",
         themeMode: data.themeMode || 'dark',
@@ -199,7 +238,7 @@ export const useStore = create<StoreState>()(
         navPosition: data.navPosition || 'bottom',
       })),
 
-      clearData: () => set(() => ({ tasks: [], completions: [], journalEntries: [], kanbanTasks: [], temporaryTasks: [] }))
+      clearData: () => set(() => ({ tasks: [], completions: [], journalEntries: [], kanbanTasks: [], temporaryTasks: [], customTaskLists: [] }))
     }),
     {
       name: 'habit-tracker-data',
