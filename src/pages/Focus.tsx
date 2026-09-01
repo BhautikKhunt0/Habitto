@@ -1,9 +1,32 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, RotateCcw } from "lucide-react";
 import { cn } from "../lib/utils";
 
 const MAX_SECONDS = 24 * 60 * 60; // 24 Hours Max (86400 seconds)
+
+const AnimatedNumber = ({ value }: { value: string }) => {
+  return (
+    <div className="flex items-center justify-center h-[1.2em] min-w-[1.2em]">
+      {value.split("").map((char, index) => (
+        <div key={index} className="relative flex items-center justify-center overflow-hidden h-[1.2em]">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={`${index}-${char}`}
+              initial={{ y: "-100%", opacity: 0, filter: "blur(2px)", scale: 0.9 }}
+              animate={{ y: "0%", opacity: 1, filter: "blur(0px)", scale: 1 }}
+              exit={{ y: "100%", opacity: 0, filter: "blur(2px)", scale: 0.9 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="inline-flex items-center justify-center tabular-nums leading-none"
+            >
+              {char}
+            </motion.span>
+          </AnimatePresence>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 export function Focus() {
   const [totalSeconds, setTotalSeconds] = useState(25 * 60);
@@ -255,7 +278,15 @@ export function Focus() {
       return;
     }
     if (!isActive) {
-      commitTime(inputValuesRef.current.h, inputValuesRef.current.m, inputValuesRef.current.s);
+      const h = parseInt(inputValuesRef.current.h, 10) || 0;
+      const m = parseInt(inputValuesRef.current.m, 10) || 0;
+      const s = parseInt(inputValuesRef.current.s, 10) || 0;
+      const inputTotal = h * 3600 + m * 60 + s;
+      
+      // If the inputs don't match the paused time, it means they were edited, so commit them as a new total.
+      if (inputTotal !== Math.floor(timeLeft)) {
+        commitTime(inputValuesRef.current.h, inputValuesRef.current.m, inputValuesRef.current.s);
+      }
     }
     setIsActive(!isActive);
   };
@@ -285,13 +316,6 @@ export function Focus() {
   const runningM = Math.floor((timeLeft % 3600) / 60).toString().padStart(2, "0");
   const runningS = (timeLeft % 60).toString().padStart(2, "0");
 
-  // Circle dimensions (balanced display ~340px)
-  const radius = 145;
-  const stroke = 5;
-  const normalizedRadius = radius;
-  const circumference = normalizedRadius * 2 * Math.PI;
-  const strokeDashoffset = circumference - progress * circumference;
-
   return (
     <div className="flex flex-col items-center justify-center w-full max-w-xl mx-auto py-8 px-4">
       
@@ -299,7 +323,7 @@ export function Focus() {
       <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-theme-surface border border-theme-border/70 shadow-sm mb-6">
         <div className={cn(
           "w-2.5 h-2.5 rounded-full transition-colors duration-300",
-          isActive ? "bg-emerald-500 animate-pulse" : "bg-theme-accent"
+          isActive ? "bg-emerald-500" : "bg-theme-accent"
         )} />
         <span className="text-sm font-semibold tracking-wider uppercase text-theme-text">Focus</span>
       </div>
@@ -310,189 +334,126 @@ export function Focus() {
           type="text"
           value={purpose}
           onChange={(e) => setPurpose(e.target.value)}
-          disabled={isActive}
+          readOnly={isActive}
           placeholder="What are you focusing on?"
           className={cn(
-            "w-full bg-transparent text-center font-display text-lg md:text-xl font-medium text-theme-text placeholder:text-theme-muted/40 focus:outline-none py-1.5 transition-all",
-            !isActive && "border-b border-transparent hover:border-theme-border/60 focus:border-theme-text/40",
-            isActive && "cursor-default text-theme-text/90"
+            "w-full bg-transparent text-center font-display text-lg md:text-xl font-medium text-theme-text placeholder:text-theme-muted/40 focus:outline-none py-1.5 transition-all border-b border-transparent",
+            isActive ? "cursor-default text-theme-text/90" : "hover:border-theme-border/60 focus:border-theme-text/40"
           )}
         />
       </div>
 
-      {/* Main Focus Ring Display (~340px) */}
-      <div className="relative w-[340px] h-[340px] flex items-center justify-center select-none">
+      {/* Main Focus Display */}
+      <div className="relative flex items-center justify-center select-none py-12">
         
-        {/* SVG Progress Rings */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          {/* Subtle outer dashed ring */}
-          <motion.svg
-            height={340}
-            width={340}
-            className="absolute inset-0 text-theme-border/30"
-            animate={{ rotate: isActive ? 360 : 0 }}
-            transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-          >
-            <circle
-              stroke="currentColor"
-              fill="transparent"
-              strokeWidth={1.5}
-              strokeDasharray="4 8"
-              r={normalizedRadius + 14}
-              cx={170}
-              cy={170}
-            />
-          </motion.svg>
-          
-          <svg
-            height={340}
-            width={340}
-            className="transform -rotate-90 overflow-visible"
-          >
-            <defs>
-              <linearGradient id="focus-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="currentColor" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="currentColor" stopOpacity="1" />
-              </linearGradient>
-            </defs>
-            {/* Background ring */}
-            <circle
-              stroke="currentColor"
-              fill="transparent"
-              strokeWidth={stroke}
-              r={normalizedRadius}
-              cx={170}
-              cy={170}
-              className="text-theme-border/30"
-            />
-            {/* Active progress ring */}
-            <circle
-              stroke="url(#focus-gradient)"
-              fill="transparent"
-              strokeWidth={stroke}
-              strokeDasharray={`${circumference} ${circumference}`}
-              style={{ strokeDashoffset }}
-              strokeLinecap="round"
-              r={normalizedRadius}
-              cx={170}
-              cy={170}
-              className="text-theme-text transition-all duration-200"
-            />
-          </svg>
-
-          {/* Orbiting indicator dot */}
-          <div 
-            className="absolute inset-0 transition-none"
-            style={{ transform: `rotate(${progress * 360}deg)` }}
-          >
-            <div 
-              className={cn(
-                "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-theme-bg border-2 border-theme-text shadow-[0_0_12px_currentColor] text-theme-text transition-opacity duration-300",
-                isActive || progress > 0 ? "opacity-100" : "opacity-0"
-              )}
-              style={{ marginTop: 170 - normalizedRadius }}
-            />
-          </div>
-        </div>
-
         {/* Center Inline Typing Timer Controls */}
         <div className="flex flex-col items-center justify-center z-10 w-full px-4">
-          {isActive ? (
-            /* Live Running View (Pure numbers, no text subtitles) */
-            <div className="flex flex-col items-center">
-              <div className="text-5xl md:text-6xl font-display font-light text-theme-text tabular-nums tracking-tight leading-none flex items-center justify-center">
-                <span>{runningH}</span>
-                <span className="text-theme-text/40 mx-1 -translate-y-1">:</span>
-                <span>{runningM}</span>
-                <span className="text-theme-text/40 mx-1 -translate-y-1">:</span>
-                <span>{runningS}</span>
-              </div>
+          
+          <div className="flex flex-col items-center timer-inputs-container relative">
+            
+            {/* The Timer Digits (Both active and inactive share the exact same layout) */}
+            <div className="flex items-center justify-center text-5xl md:text-6xl font-display font-light text-theme-text leading-none">
+              
+              {isActive ? (
+                <>
+                  <div className="w-16 md:w-20 flex justify-center tabular-nums">
+                    <AnimatedNumber value={runningH} />
+                  </div>
+                  <span className="text-theme-text/40 font-light mx-0.5 -translate-y-1 select-none">:</span>
+                  <div className="w-16 md:w-20 flex justify-center tabular-nums">
+                    <AnimatedNumber value={runningM} />
+                  </div>
+                  <span className="text-theme-text/40 font-light mx-0.5 -translate-y-1 select-none">:</span>
+                  <div className="w-16 md:w-20 flex justify-center tabular-nums">
+                    <AnimatedNumber value={runningS} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Hours Unit */}
+                  <input
+                    ref={hoursRef}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="00"
+                    value={hoursInput}
+                    onClick={(e) => e.currentTarget.select()}
+                    onFocus={(e) => {
+                      setActiveUnit("hours");
+                      e.target.select();
+                    }}
+                    onChange={(e) => handleInputChange("hours", e)}
+                    onBlur={handleBlur}
+                    onKeyDown={(e) => handleKeyDown("hours", e)}
+                    className={cn(
+                      "w-16 md:w-20 h-[1.2em] bg-transparent text-center text-5xl md:text-6xl font-display font-light text-theme-text tabular-nums focus:outline-none rounded-xl transition-all duration-200 cursor-text p-0 placeholder:text-theme-muted/30",
+                      activeUnit === "hours" ? "bg-theme-surface/80 shadow-inner text-theme-accent ring-1 ring-theme-accent/30" : "hover:bg-theme-surface/30"
+                    )}
+                  />
+
+                  <span className="text-theme-text/40 font-light mx-0.5 -translate-y-1 select-none">:</span>
+
+                  {/* Minutes Unit */}
+                  <input
+                    ref={minutesRef}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="00"
+                    value={minutesInput}
+                    onClick={(e) => e.currentTarget.select()}
+                    onFocus={(e) => {
+                      setActiveUnit("minutes");
+                      e.target.select();
+                    }}
+                    onChange={(e) => handleInputChange("minutes", e)}
+                    onBlur={handleBlur}
+                    onKeyDown={(e) => handleKeyDown("minutes", e)}
+                    className={cn(
+                      "w-16 md:w-20 h-[1.2em] bg-transparent text-center text-5xl md:text-6xl font-display font-light text-theme-text tabular-nums focus:outline-none rounded-xl transition-all duration-200 cursor-text p-0 placeholder:text-theme-muted/30",
+                      activeUnit === "minutes" ? "bg-theme-surface/80 shadow-inner text-theme-accent ring-1 ring-theme-accent/30" : "hover:bg-theme-surface/30"
+                    )}
+                  />
+
+                  <span className="text-theme-text/40 font-light mx-0.5 -translate-y-1 select-none">:</span>
+
+                  {/* Seconds Unit */}
+                  <input
+                    ref={secondsRef}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="00"
+                    value={secondsInput}
+                    onClick={(e) => e.currentTarget.select()}
+                    onFocus={(e) => {
+                      setActiveUnit("seconds");
+                      e.target.select();
+                    }}
+                    onChange={(e) => handleInputChange("seconds", e)}
+                    onBlur={handleBlur}
+                    onKeyDown={(e) => handleKeyDown("seconds", e)}
+                    className={cn(
+                      "w-16 md:w-20 h-[1.2em] bg-transparent text-center text-5xl md:text-6xl font-display font-light text-theme-text tabular-nums focus:outline-none rounded-xl transition-all duration-200 cursor-text p-0 placeholder:text-theme-muted/30",
+                      activeUnit === "seconds" ? "bg-theme-surface/80 shadow-inner text-theme-accent ring-1 ring-theme-accent/30" : "hover:bg-theme-surface/30"
+                    )}
+                  />
+                </>
+              )}
             </div>
-          ) : (
-            /* Direct In-Place Typing Inputs (HH : MM : SS) */
-            <div className="flex flex-col items-center timer-inputs-container">
-              <div className="flex items-center justify-center text-5xl md:text-6xl font-display font-light text-theme-text leading-none">
-                
-                {/* Hours Unit */}
-                <input
-                  ref={hoursRef}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="00"
-                  value={hoursInput}
-                  onClick={(e) => e.currentTarget.select()}
-                  onFocus={(e) => {
-                    setActiveUnit("hours");
-                    e.target.select();
-                  }}
-                  onChange={(e) => handleInputChange("hours", e)}
-                  onBlur={handleBlur}
-                  onKeyDown={(e) => handleKeyDown("hours", e)}
-                  className={cn(
-                    "w-16 md:w-20 bg-transparent text-center text-5xl md:text-6xl font-display font-light text-theme-text tabular-nums focus:outline-none rounded-xl transition-all duration-200 cursor-text p-0 placeholder:text-theme-muted/30",
-                    activeUnit === "hours" ? "bg-theme-surface/80 shadow-inner text-theme-accent ring-1 ring-theme-accent/30" : "hover:bg-theme-surface/30"
-                  )}
-                />
 
-                <span className="text-theme-text/40 font-light mx-0.5 -translate-y-1 select-none">:</span>
-
-                {/* Minutes Unit */}
-                <input
-                  ref={minutesRef}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="00"
-                  value={minutesInput}
-                  onClick={(e) => e.currentTarget.select()}
-                  onFocus={(e) => {
-                    setActiveUnit("minutes");
-                    e.target.select();
-                  }}
-                  onChange={(e) => handleInputChange("minutes", e)}
-                  onBlur={handleBlur}
-                  onKeyDown={(e) => handleKeyDown("minutes", e)}
-                  className={cn(
-                    "w-16 md:w-20 bg-transparent text-center text-5xl md:text-6xl font-display font-light text-theme-text tabular-nums focus:outline-none rounded-xl transition-all duration-200 cursor-text p-0 placeholder:text-theme-muted/30",
-                    activeUnit === "minutes" ? "bg-theme-surface/80 shadow-inner text-theme-accent ring-1 ring-theme-accent/30" : "hover:bg-theme-surface/30"
-                  )}
-                />
-
-                <span className="text-theme-text/40 font-light mx-0.5 -translate-y-1 select-none">:</span>
-
-                {/* Seconds Unit */}
-                <input
-                  ref={secondsRef}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="00"
-                  value={secondsInput}
-                  onClick={(e) => e.currentTarget.select()}
-                  onFocus={(e) => {
-                    setActiveUnit("seconds");
-                    e.target.select();
-                  }}
-                  onChange={(e) => handleInputChange("seconds", e)}
-                  onBlur={handleBlur}
-                  onKeyDown={(e) => handleKeyDown("seconds", e)}
-                  className={cn(
-                    "w-16 md:w-20 bg-transparent text-center text-5xl md:text-6xl font-display font-light text-theme-text tabular-nums focus:outline-none rounded-xl transition-all duration-200 cursor-text p-0 placeholder:text-theme-muted/30",
-                    activeUnit === "seconds" ? "bg-theme-surface/80 shadow-inner text-theme-accent ring-1 ring-theme-accent/30" : "hover:bg-theme-surface/30"
-                  )}
-                />
-
-              </div>
-
-              {/* Labels below digits while setting up */}
-              <div className="flex items-center justify-between w-full max-w-[210px] text-[11px] font-semibold uppercase tracking-widest text-theme-muted mt-3 px-2 select-none">
-                <span>Hours</span>
-                <span>Mins</span>
-                <span>Secs</span>
-              </div>
+            {/* Labels below digits - always in DOM so height never shifts */}
+            <div className={cn(
+              "flex items-center justify-between w-full max-w-[210px] text-[11px] font-semibold uppercase tracking-widest text-theme-muted mt-3 px-2 select-none transition-opacity duration-300",
+              isActive ? "opacity-0 pointer-events-none" : "opacity-100"
+            )}>
+              <span>Hours</span>
+              <span>Mins</span>
+              <span>Secs</span>
             </div>
-          )}
+            
+          </div>
         </div>
       </div>
 
