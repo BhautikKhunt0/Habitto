@@ -43,3 +43,51 @@ body {
   width: 0px;
   background: transparent;
 }
+
+/* Professional dock: thin cursor-tracked neon edge + sliding pill.
+   --mx/--my/--ang/--beam are set from Layout.tsx on mousemove (rAF, no re-render). */
+.neon-dock {
+  --mx: 50%;
+  --my: 50%;
+  --ang: 0deg;
+  --beam: 0;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(color-mix(in srgb, var(--surface-color) 70%, transparent), color-mix(in srgb, var(--surface-color) 70%, transparent)) padding-box,
+    linear-gradient(140deg, rgb(var(--accent-rgb) / 0.28), var(--border-color) 35%, var(--border-color) 65%, rgb(var(--accent-rgb) / 0.28)) border-box;
+}
+.neon-dock::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  z-index: 0;
+  background: conic-gradient(from var(--ang) at 50% 50%,
+    rgb(var(--accent-rgb) / 1), rgb(var(--accent-rgb) / 0.4) 4%,
+    transparent 9%, transparent 91%,
+    rgb(var(--accent-rgb) / 0.4) 96%, rgb(var(--accent-rgb) / 1));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: var(--beam);
+  transition: opacity 0.25s;
+}
+.neon-dock::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(90px circle at var(--mx) var(--my), rgb(var(--accent-rgb) / 0.14), transparent 70%);
+  opacity: var(--beam);
+  transition: opacity 0.25s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .neon-dock::before,
+  .neon-dock::after {
+    display: none;
+  }
+}

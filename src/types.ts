@@ -80,5 +80,4 @@ export interface AppData {
   themeColor?: string;
   themeId?: string;
   customThemes?: CustomTheme[];
-  navPosition?: 'bottom' | 'left' | 'right' | 'bottom-right';
 }

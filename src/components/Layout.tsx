@@ -1,50 +1,47 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { LayoutDashboard, CheckSquare, BarChart2, Settings, Book, Kanban, Timer } from "lucide-react";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type FC, type MouseEvent as ReactMouseEvent } from "react";
 import { cn, hexToRgb } from "../lib/utils";
-import { AnimatePresence, motion, useMotionValue } from "framer-motion";
+import { motion } from "framer-motion";
 import { useStore, DEFAULT_THEMES } from "../store/useStore";
 
-function DockIcon({ 
-  item, 
-  isActive, 
-  navPosition,
-}: { 
-  item: any, 
-  isActive: boolean, 
-  navPosition: 'bottom' | 'left' | 'right' | 'bottom-right'
-}) {
-  const tooltipClass = navPosition === 'left' 
-    ? "absolute left-full top-1/2 -translate-y-1/2 ml-3 pointer-events-none opacity-0 -translate-x-[10px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 z-50"
-    : navPosition === 'right'
-    ? "absolute right-full top-1/2 -translate-y-1/2 mr-3 pointer-events-none opacity-0 translate-x-[10px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 z-50"
-    : "absolute bottom-full left-1/2 -translate-x-1/2 mb-3 pointer-events-none opacity-0 translate-y-[10px] group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-50";
-
+const DockIcon: FC<{
+  item: any,
+  isActive: boolean,
+}> = ({
+  item,
+  isActive,
+}) => {
   return (
     <div className="relative group z-10">
       <Link
         to={item.path}
         className={cn(
-          "flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full transition-all duration-300 relative",
-          isActive 
-            ? "bg-theme-accent text-theme-bg" 
-            : "text-theme-muted hover:bg-theme-surface hover:text-theme-text"
+          "relative flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full transition-colors duration-300 hover:-translate-y-0.5 transition-transform",
+          isActive
+            ? "text-theme-bg"
+            : "text-theme-muted hover:bg-theme-text/[0.06] hover:text-theme-text"
         )}
       >
-        <div className="flex items-center justify-center">
-          <item.icon className={cn("w-5 h-5 relative z-10 transition-colors")} />
-        </div>
+        {isActive && (
+          <motion.span
+            layoutId="habitto-dock-pill"
+            transition={{ type: "spring", damping: 32, stiffness: 420, mass: 0.9 }}
+            className="absolute inset-0 rounded-full bg-theme-accent shadow-[0_6px_20px_rgb(var(--accent-rgb)/0.45)]"
+          />
+        )}
+        <item.icon className={cn("w-5 h-5 relative z-10", isActive && "[filter:drop-shadow(0_0_6px_rgb(var(--accent-rgb)/0.6))]")} />
       </Link>
-      
+
       {/* Tooltip */}
-      <div className={tooltipClass}>
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 pointer-events-none opacity-0 translate-y-[10px] group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-50">
         <div className="bg-theme-text text-theme-bg text-xs font-semibold tracking-wide px-3 py-1.5 rounded-full shadow-xl whitespace-nowrap">
           {item.name}
         </div>
       </div>
     </div>
   );
-}
+};
 
 export function Layout() {
   const location = useLocation();
@@ -53,58 +50,43 @@ export function Layout() {
   const themeId = useStore(state => state.themeId);
   const customThemes = useStore(state => state.customThemes);
   const themeColorState = useStore(state => state.themeColor);
-  const navPosition = useStore(state => state.navPosition);
-  const setNavPosition = useStore(state => state.setNavPosition);
 
   const mainRef = useRef<HTMLElement>(null);
-  const [dragHoverZone, setDragHoverZone] = useState<'left' | 'right' | 'bottom' | 'bottom-right' | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isDockHovered, setIsDockHovered] = useState(false);
-  const [recentlyDragged, setRecentlyDragged] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const beamRaf = useRef(0);
 
-  const handleDragStart = () => {
-    setIsDragging(true);
-    setRecentlyDragged(true);
+  // Thin neon edge locked precisely to the cursor's border point (no lag, no follower dot)
+  const handleNeonMove = (e: ReactMouseEvent<HTMLElement>) => {
+    const node = navRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    cancelAnimationFrame(beamRaf.current);
+    beamRaf.current = requestAnimationFrame(() => {
+      const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+      let nx = clamp(px, 0, rect.width);
+      let ny = clamp(py, 0, rect.height);
+      const inside = px >= 0 && px <= rect.width && py >= 0 && py <= rect.height;
+      if (inside) {
+        const dl = px, dr = rect.width - px, dt = py, db = rect.height - py;
+        const m = Math.min(dl, dr, dt, db);
+        if (m === dl) nx = 0;
+        else if (m === dr) nx = rect.width;
+        else if (m === dt) ny = 0;
+        else ny = rect.height;
+      }
+      const ang = Math.atan2(ny - rect.height / 2, nx - rect.width / 2) * 180 / Math.PI + 90;
+      node.style.setProperty("--mx", `${px}px`);
+      node.style.setProperty("--my", `${py}px`);
+      node.style.setProperty("--ang", `${ang}deg`);
+      node.style.setProperty("--beam", "1");
+    });
   };
 
-
-  const handleDrag = (event: any, info: any) => {
-    const { point } = info;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    
-    if (point.x > width * 0.75 && point.y > height * 0.6) {
-      setDragHoverZone('bottom-right');
-    } else if (point.x < width * 0.25) {
-      setDragHoverZone('left');
-    } else if (point.x > width * 0.75) {
-      setDragHoverZone('right');
-    } else if (point.y > height * 0.6) {
-      setDragHoverZone('bottom');
-    } else {
-      setDragHoverZone(navPosition);
-    }
-  };
-
-  const handleDragEnd = (event: any, info: any) => {
-    setIsDragging(false);
-    setDragHoverZone(null);
-    setTimeout(() => setRecentlyDragged(false), 800); // Wait for snap animation to finish
-    
-    const { point } = info;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    if (point.x > width * 0.75 && point.y > height * 0.6) {
-      setNavPosition('bottom-right');
-    } else if (point.x < width * 0.25) {
-      setNavPosition('left');
-    } else if (point.x > width * 0.75) {
-      setNavPosition('right');
-    } else if (point.y > height * 0.6) {
-      setNavPosition('bottom');
-    }
-    // if dropped in the middle (top/center), keep current position
+  const handleNeonLeave = () => {
+    cancelAnimationFrame(beamRaf.current);
+    navRef.current?.style.setProperty("--beam", "0");
   };
 
   useEffect(() => {
@@ -119,7 +101,7 @@ export function Layout() {
     if (theme) {
       return themeMode === 'light' ? theme.lightColor : theme.darkColor;
     }
-    return themeColorState; 
+    return themeColorState;
   }, [themeId, customThemes, themeMode, themeColorState]);
 
   useEffect(() => {
@@ -127,13 +109,13 @@ export function Layout() {
     if (themeMode === 'system') {
       isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
-    
+
     if (isDark) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-    
+
     const rgb = hexToRgb(activeColor);
     if (rgb) {
       document.documentElement.style.setProperty('--accent-rgb', rgb);
@@ -152,19 +134,19 @@ export function Layout() {
 
   return (
     <div className="flex h-screen w-full bg-theme-bg text-theme-text font-sans selection:bg-theme-accent/30 selection:text-theme-accent transition-colors duration-300 relative overflow-hidden">
-      
+
       {/* Elegant Ambient Background */}
-      <div 
+      <div
         className="fixed inset-0 z-0 pointer-events-none opacity-20 dark:opacity-10"
         style={{
           backgroundImage: "radial-gradient(circle at 15% 15%, currentColor 0%, transparent 40%), radial-gradient(circle at 85% 85%, currentColor 0%, transparent 50%)",
           color: "rgb(var(--accent-rgb))"
         }}
       />
-      
+
       {/* Main Content Area */}
       <main ref={mainRef} className="flex-1 flex flex-col h-full w-full relative z-10 overflow-y-auto">
-        
+
         {/* Top Branding (Minimal) */}
         <header className="w-full flex items-center justify-between p-6 md:px-12 md:py-8 max-w-7xl mx-auto">
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
@@ -183,101 +165,24 @@ export function Layout() {
         </div>
       </main>
 
-      {/* Drop Zone Previews */}
-      <AnimatePresence>
-        {isDragging && dragHoverZone === 'left' && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, filter: "blur(4px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 0.9, filter: "blur(4px)" }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="fixed left-8 top-1/2 -translate-y-1/2 w-[72px] h-[340px] bg-theme-accent/5 border-2 border-theme-accent/20 rounded-full z-40 pointer-events-none"
-          />
-        )}
-        {isDragging && dragHoverZone === 'right' && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, filter: "blur(4px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 0.9, filter: "blur(4px)" }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="fixed right-8 top-1/2 -translate-y-1/2 w-[72px] h-[340px] bg-theme-accent/5 border-2 border-theme-accent/20 rounded-full z-40 pointer-events-none"
-          />
-        )}
-        {isDragging && dragHoverZone === 'bottom' && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, filter: "blur(4px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 0.9, filter: "blur(4px)" }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[340px] h-[72px] bg-theme-accent/5 border-2 border-theme-accent/20 rounded-full z-40 pointer-events-none"
-          />
-        )}
-        {isDragging && dragHoverZone === 'bottom-right' && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.5, filter: "blur(4px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 0.5, filter: "blur(4px)" }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="fixed bottom-8 right-8 w-[72px] h-[72px] bg-theme-accent/5 border-2 border-theme-accent/20 rounded-full z-40 pointer-events-none"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Floating Dock Navigation */}
+      {/* Floating Dock Navigation — fixed bottom-center, sliding pill + thin cursor-tracked neon edge */}
       <motion.nav
-        layout
-        drag
-        dragMomentum={false}
-        dragSnapToOrigin={true}
-        whileDrag={{ scale: 1.05, cursor: "grabbing" }}
-        onDragStart={handleDragStart}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
-        onMouseEnter={() => setIsDockHovered(true)}
-        onMouseLeave={() => setIsDockHovered(false)}
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: "spring", damping: 30, stiffness: 300, mass: 0.8 }}
-        className={cn(
-          "fixed z-50 flex items-center p-2 md:p-3 rounded-full bg-theme-surface/70 border border-theme-border/50 shadow-2xl shadow-black/10 dark:shadow-[0_20px_40px_rgb(0,0,0,0.4)] cursor-grab",
-          navPosition === 'left' ? "left-8 top-1/2 -translate-y-1/2 flex-col gap-2 md:gap-4" : "",
-          navPosition === 'right' ? "right-8 top-1/2 -translate-y-1/2 flex-col gap-2 md:gap-4" : "",
-          navPosition === 'bottom' ? "bottom-8 left-1/2 -translate-x-1/2 flex-row gap-2 md:gap-4" : "",
-          navPosition === 'bottom-right' ? "bottom-8 right-8 flex-col gap-0" : ""
-        )}
+        ref={navRef}
+        onMouseMove={handleNeonMove}
+        onMouseLeave={handleNeonLeave}
+        initial={{ opacity: 0, y: 50, filter: "blur(6px)" }}
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        transition={{ type: "spring", damping: 28, stiffness: 320 }}
+        className="neon-dock fixed z-50 flex flex-row items-center gap-2 md:gap-4 p-2 md:p-3 rounded-full shadow-2xl shadow-black/10 dark:shadow-[0_20px_40px_rgb(0,0,0,0.4)] bottom-8 left-1/2 -translate-x-1/2"
       >
         <div className="absolute inset-0 rounded-full pointer-events-none -z-10" style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }} />
-        <AnimatePresence>
-          {(navPosition === 'bottom-right' ? [...navItems].reverse() : navItems).map((item, index) => {
-            const isActive = location.pathname === item.path;
-            const isDashboard = item.name === "Dashboard";
-            
-            const isVisible = navPosition !== 'bottom-right' || isDockHovered || isDashboard || isDragging || recentlyDragged;
-
-            return (
-              <motion.div
-                layout
-                key={item.path}
-                initial={navPosition === 'bottom-right' ? { opacity: 0, height: 0, y: 15, scale: 0.8, filter: 'blur(4px)', marginTop: 0 } : false}
-                animate={
-                  navPosition === 'bottom-right' 
-                    ? isVisible 
-                      ? { opacity: 1, height: "auto", y: 0, scale: 1, filter: 'blur(0px)', marginBottom: isDashboard ? 0 : 8, pointerEvents: 'auto' } 
-                      : { opacity: 0, height: 0, y: 15, scale: 0.8, filter: 'blur(4px)', marginBottom: 0, pointerEvents: 'none' } 
-                    : { opacity: 1, height: "auto", y: 0, scale: 1, filter: 'blur(0px)', marginBottom: 0, pointerEvents: 'auto' }
-                }
-                transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                className={cn(navPosition === 'bottom-right' ? "overflow-visible flex items-center justify-center relative" : "")}
-              >
-                <DockIcon
-                  item={item}
-                  isActive={isActive}
-                  navPosition={navPosition === 'bottom-right' ? 'right' : navPosition}
-                />
-              </motion.div>
-            )
-          })}
-        </AnimatePresence>
+        {navItems.map((item) => (
+          <DockIcon
+            key={item.path}
+            item={item}
+            isActive={location.pathname === item.path}
+          />
+        ))}
       </motion.nav>
     </div>
   );

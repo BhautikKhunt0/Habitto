@@ -22,7 +22,6 @@ interface StoreState extends AppData {
   temporaryTasks: TemporaryTask[];
   customTaskLists: CustomTaskList[];
   quote: string;
-  navPosition: 'bottom' | 'left' | 'right' | 'bottom-right';
   setThemeMode: (mode: 'light' | 'dark' | 'system') => void;
   setThemeColor: (color: string) => void;
   setThemeId: (id: string) => void;
@@ -30,7 +29,6 @@ interface StoreState extends AppData {
   updateCustomTheme: (id: string, theme: CustomTheme) => void;
   deleteCustomTheme: (id: string) => void;
   setQuote: (quote: string) => void;
-  setNavPosition: (position: 'bottom' | 'left' | 'right' | 'bottom-right') => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'archived'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string, keepHistory: boolean) => void;
@@ -73,7 +71,6 @@ export const useStore = create<StoreState>()(
       themeColor: '#ddb7ff',
       themeId: 'purple',
       customThemes: [],
-      navPosition: 'bottom',
       
       setThemeMode: (themeMode) => set({ themeMode }),
       setThemeColor: (themeColor) => set({ themeColor }),
@@ -87,7 +84,6 @@ export const useStore = create<StoreState>()(
         themeId: state.themeId === id ? 'purple' : state.themeId
       })),
       setQuote: (quote) => set({ quote }),
-      setNavPosition: (navPosition) => set({ navPosition }),
 
       addTask: (taskData) => set((state) => ({
         tasks: [
@@ -235,7 +231,6 @@ export const useStore = create<StoreState>()(
         themeColor: data.themeColor || '#ddb7ff',
         themeId: data.themeId || 'purple',
         customThemes: data.customThemes || [],
-        navPosition: data.navPosition || 'bottom',
       })),
 
       clearData: () => set(() => ({ tasks: [], completions: [], journalEntries: [], kanbanTasks: [], temporaryTasks: [], customTaskLists: [] }))
