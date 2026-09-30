@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, CheckSquare, BarChart2, Settings, Book, Kanban, Timer } from "lucide-react";
+import { LayoutDashboard, CheckSquare, BarChart2, Settings, Book, Kanban, Timer, Shapes } from "lucide-react";
 import { useEffect, useMemo, useRef, type FC, type MouseEvent as ReactMouseEvent } from "react";
 import { cn, hexToRgb } from "../lib/utils";
 import { motion } from "framer-motion";
@@ -45,6 +45,8 @@ const DockIcon: FC<{
 
 export function Layout() {
   const location = useLocation();
+
+  const isCanvas = location.pathname === "/canvas";
 
   const themeMode = useStore(state => state.themeMode);
   const themeId = useStore(state => state.themeId);
@@ -126,6 +128,7 @@ export function Layout() {
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "Tasks", path: "/tasks", icon: CheckSquare },
     { name: "Kanban", path: "/kanban", icon: Kanban },
+    { name: "Canvas", path: "/canvas", icon: Shapes },
     { name: "Focus", path: "/focus", icon: Timer },
     { name: "Journal", path: "/journal", icon: Book },
     { name: "Analytics", path: "/stats", icon: BarChart2 },
@@ -147,18 +150,20 @@ export function Layout() {
       {/* Main Content Area */}
       <main ref={mainRef} className="flex-1 flex flex-col h-full w-full relative z-10 overflow-y-auto">
 
-        {/* Top Branding (Minimal) */}
-        <header className="w-full flex items-center justify-between p-6 md:px-12 md:py-8 max-w-7xl mx-auto">
-          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-xl bg-theme-text flex items-center justify-center">
-              <CheckSquare className="w-4 h-4 text-theme-bg" />
-            </div>
-            <h1 className="text-xl font-display font-medium tracking-tight text-theme-text">Habitto</h1>
-          </Link>
-        </header>
+        {/* Top Branding (Minimal) — hidden on the full-bleed canvas route */}
+        {!isCanvas && (
+          <header className="w-full flex items-center justify-between p-6 md:px-12 md:py-8 max-w-7xl mx-auto">
+            <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <div className="w-8 h-8 rounded-xl bg-theme-text flex items-center justify-center">
+                <CheckSquare className="w-4 h-4 text-theme-bg" />
+              </div>
+              <h1 className="text-xl font-display font-medium tracking-tight text-theme-text">Habitto</h1>
+            </Link>
+          </header>
+        )}
 
-        {/* Scrollable Content wrapper */}
-        <div className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-12 pb-40">
+        {/* Scrollable Content wrapper — full-bleed on the canvas route only */}
+        <div className={isCanvas ? "flex-1 w-full h-full min-h-0" : "flex-1 w-full max-w-7xl mx-auto px-4 md:px-12 pb-40"}>
           <div className="h-full">
             <Outlet />
           </div>

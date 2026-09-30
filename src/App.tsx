@@ -6,6 +6,7 @@ import { Stats } from "./pages/Stats";
 import { Settings } from "./pages/Settings";
 import { Journal } from "./pages/Journal";
 import { Kanban } from "./pages/Kanban";
+import { Canvas } from "./pages/Canvas";
 import { Focus } from "./pages/Focus";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -63,6 +64,7 @@ export default function App() {
               <Route index element={<Dashboard />} />
               <Route path="tasks" element={<Tasks />} />
               <Route path="kanban" element={<Kanban />} />
+              <Route path="canvas" element={<Canvas />} />
               <Route path="focus" element={<Focus />} />
               <Route path="stats" element={<Stats />} />
               <Route path="journal" element={<Journal />} />

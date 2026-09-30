@@ -4,6 +4,9 @@
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  /* Canvas content font — Comic Sans is a local system font, so metrics are
+     available instantly (no webfont race with the text auto-resize). */
+  --font-canvas: "Comic Sans MS", "Comic Sans", "Chalkboard SE", "Marker Felt", cursive;
   
   --color-theme-bg: var(--bg-color);
   --color-theme-surface: var(--surface-color);
