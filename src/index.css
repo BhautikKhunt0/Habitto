@@ -41,6 +41,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Theme switching: while <html> carries .theme-fade (toggled by Layout for
+   ~430ms on a dark/light change), ease every color-bearing property so the
+   whole UI cross-fades instead of snapping. Scoped + temporary, so hover
+   states and everyday transitions are unaffected. */
+html.theme-fade *,
+html.theme-fade *::before,
+html.theme-fade *::after {
+  transition: background-color 400ms ease, border-color 400ms ease, color 400ms ease,
+    fill 400ms ease, stroke 400ms ease, box-shadow 400ms ease !important;
+}
+
 /* Hide scrollbar for cleaner UI */
 ::-webkit-scrollbar {
   width: 0px;

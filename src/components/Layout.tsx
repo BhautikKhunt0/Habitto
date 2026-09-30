@@ -5,6 +5,15 @@ import { cn, hexToRgb } from "../lib/utils";
 import { motion } from "framer-motion";
 import { useStore, DEFAULT_THEMES } from "../store/useStore";
 
+/** "255 120 30" → [255, 120, 30]; null when malformed (never interpolates garbage). */
+const parseRgbTriplet = (value: string): [number, number, number] | null => {
+  const parts = value.trim().split(/\s+/).map(Number);
+  return parts.length === 3 && parts.every(Number.isFinite) ? [parts[0], parts[1], parts[2]] : null;
+};
+
+/** Accent cross-fade duration — snappy, but silky. */
+const ACCENT_FADE_MS = 480;
+
 const DockIcon: FC<{
   item: any,
   isActive: boolean,
@@ -56,6 +65,10 @@ export function Layout() {
   const mainRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const beamRaf = useRef(0);
+  const accentRaf = useRef(0); // accent cross-fade animation
+  const accentInit = useRef(false); // skip interpolating on first paint
+  const wasDark = useRef<boolean | null>(null); // detect theme flips
+  const fadeTimer = useRef(0); // .theme-fade removal timer
 
   // Thin neon edge locked precisely to the cursor's border point (no lag, no follower dot)
   const handleNeonMove = (e: ReactMouseEvent<HTMLElement>) => {
@@ -107,21 +120,62 @@ export function Layout() {
   }, [themeId, customThemes, themeMode, themeColorState]);
 
   useEffect(() => {
-    let isDark = themeMode === 'dark';
-    if (themeMode === 'system') {
-      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const el = document.documentElement;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    let isDark = themeMode === "dark";
+    if (themeMode === "system") {
+      isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     }
 
     if (isDark) {
-      document.documentElement.classList.add('dark');
+      el.classList.add("dark");
     } else {
-      document.documentElement.classList.remove('dark');
+      el.classList.remove("dark");
     }
 
+    // Theme flip: give every color-bearing property ~400ms to ease into place
+    // (scoped to a temporary class so normal hover transitions stay untouched).
+    if (wasDark.current === null) {
+      wasDark.current = isDark;
+    } else if (wasDark.current !== isDark) {
+      wasDark.current = isDark;
+      if (!reduced) {
+        el.classList.add("theme-fade");
+        window.clearTimeout(fadeTimer.current);
+        fadeTimer.current = window.setTimeout(() => el.classList.remove("theme-fade"), 430);
+      }
+    }
+
+    // Accent change: interpolate --accent-rgb per frame so EVERY consumer
+    // (borders, charts, shadows, gradients) cross-fades in perfect sync.
+    // Rapid picking chains seamlessly — each new run continues from the
+    // exact mid-flight value the previous one left behind.
     const rgb = hexToRgb(activeColor);
     if (rgb) {
-      document.documentElement.style.setProperty('--accent-rgb', rgb);
+      window.cancelAnimationFrame(accentRaf.current);
+      const target = parseRgbTriplet(rgb);
+      const current = accentInit.current ? parseRgbTriplet(el.style.getPropertyValue("--accent-rgb")) : null;
+      if (!target || !current || reduced) {
+        el.style.setProperty("--accent-rgb", rgb);
+      } else {
+        const t0 = performance.now();
+        const step = (now: number) => {
+          const t = Math.min(1, (now - t0) / ACCENT_FADE_MS);
+          const e = 1 - Math.pow(1 - t, 3); // easeOutCubic
+          const m = (a: number, b: number) => Math.round(a + (b - a) * e);
+          el.style.setProperty("--accent-rgb", `${m(current[0], target[0])} ${m(current[1], target[1])} ${m(current[2], target[2])}`);
+          if (t < 1) accentRaf.current = requestAnimationFrame(step);
+        };
+        accentRaf.current = requestAnimationFrame(step);
+      }
+      accentInit.current = true;
     }
+
+    return () => {
+      window.cancelAnimationFrame(accentRaf.current);
+      window.clearTimeout(fadeTimer.current);
+    };
   }, [themeMode, activeColor]);
 
   const navItems = [
@@ -138,12 +192,15 @@ export function Layout() {
   return (
     <div className="flex h-screen w-full bg-theme-bg text-theme-text font-sans selection:bg-theme-accent/30 selection:text-theme-accent transition-colors duration-300 relative overflow-hidden">
 
-      {/* Elegant Ambient Background */}
+      {/* Flat Linear/Vercel-style background: pure color + film grain only.
+          The fine grayscale noise (5% light / 7% dark) doubles as perceptual
+          dither, so the flat fill never bands on dark displays. */}
       <div
-        className="fixed inset-0 z-0 pointer-events-none opacity-20 dark:opacity-10"
+        className="fixed inset-0 z-0 pointer-events-none opacity-[0.05] dark:opacity-[0.07]"
+        aria-hidden="true"
         style={{
-          backgroundImage: "radial-gradient(circle at 15% 15%, currentColor 0%, transparent 40%), radial-gradient(circle at 85% 85%, currentColor 0%, transparent 50%)",
-          color: "rgb(var(--accent-rgb))"
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")`,
+          backgroundSize: "140px 140px",
         }}
       />
 
