@@ -8,10 +8,12 @@
  *    other selected node are left exactly where they are (there is nothing to
  *    "arrange" about them).
  *  - **Deterministic & meaningful** (never random, never click-order
- *    dependent): nodes are visited in canonical geometry order, cycles are
- *    broken at the geometrically-backward edge (so a double-headed connector
- *    always keeps its forward direction and arrows never render against the
- *    flow), median-heuristic sweeps reduce edge crossings, then columns align
+ *    dependent): compact BFS-distance layering keeps hub-and-spoke graphs
+ *    structured — a node with a direct edge from the hub sits one column out
+ *    from it no matter how long the indirect chain is, so chains only unroll
+ *    when they genuinely must; cycles are broken at the geometrically-backward
+ *    edge (so a double-headed connector always keeps its forward direction),
+ *    median-heuristic sweeps reduce edge crossings, then columns align
  *    perfectly and ROWS share one top across columns (grid alignment).
  *  - **Respects the user's flow direction**: the dominant axis of the current
  *    edge geometry decides left→right vs top→bottom, with ties broken toward
@@ -75,7 +77,10 @@ function buildDag(
   const visit = (v: ID) => {
     color.set(v, GRAY);
     const neigh = Array.from(out.get(v) ?? []);
-    neigh.sort((a, b) => rankOf(v, a) - rankOf(v, b));
+    // Forward geometric edges first (so cycles open at backward edges), then
+    // id — the id tie-break keeps traversal identical no matter which order
+    // the edges were recorded in (never click/creation-order dependent).
+    neigh.sort((a, b) => rankOf(v, a) - rankOf(v, b) || a.localeCompare(b));
     for (const w of neigh) {
       if (!dag.has(w)) continue; // outside this component
       const c = color.get(w) ?? WHITE;
@@ -91,35 +96,78 @@ function buildDag(
 }
 
 /**
- * Longest-path layering over the DAG (Kahn topological order): every root sits
- * in layer 0 and each node sits one layer past its furthest predecessor, which
- * is what makes arrows always point along the flow.
+ * Compact layering over the DAG — two passes:
+ *
+ *  1. **BFS distance from the sources**: a node with a DIRECT edge from the
+ *     hub sits one column out from the hub, no matter how long the indirect
+ *     chain between them is. This is what keeps hub-and-spoke diagrams
+ *     structured instead of unrolling every chain into one straight line
+ *     (chain edges that end up inside a column simply render as short
+ *     vertical arrows, which reads far better than a 7-box row).
+ *  2. **Monotone pull in topological order**: a parent may pull its child
+ *     LATER — `layer(child) = max(layer(child), layer(parent))` — so no kept
+ *     edge ever renders backward. The pull is equality-only (no +1), so a
+ *     long chain never pads extra columns when the node is already placed.
+ *
+ * Both passes are order-independent (first-visit BFS = min over paths, the
+ * pull = max over parents), so the result never depends on selection order.
+ * Layer gaps are compressed at the end so columns are always contiguous 0..k.
  */
 function computeLayers(rootIds: ID[], dag: Map<ID, ID[]>): Map<ID, number> {
-  const indeg = new Map<ID, number>();
   const layer = new Map<ID, number>();
+  const outEdges = (v: ID): ID[] => dag.get(v) ?? [];
+
+  // ---- pass 1: multi-source BFS → shortest distance from any root -------
+  const indeg = new Map<ID, number>();
+  for (const id of rootIds) indeg.set(id, 0);
   for (const id of rootIds) {
-    indeg.set(id, 0);
-    layer.set(id, 0);
-  }
-  for (const id of rootIds) {
-    for (const w of dag.get(id) ?? []) indeg.set(w, (indeg.get(w) ?? 0) + 1);
+    for (const w of outEdges(id)) indeg.set(w, (indeg.get(w) ?? 0) + 1);
   }
   const queue: ID[] = [];
   for (const id of rootIds) {
-    if ((indeg.get(id) ?? 0) === 0) queue.push(id);
+    if ((indeg.get(id) ?? 0) === 0) {
+      layer.set(id, 0);
+      queue.push(id);
+    }
   }
   let qi = 0;
   while (qi < queue.length) {
     const v = queue[qi++];
     const lv = layer.get(v)!;
-    for (const w of dag.get(v) ?? []) {
-      layer.set(w, Math.max(layer.get(w) ?? 0, lv + 1));
-      const d = (indeg.get(w) ?? 0) - 1;
-      indeg.set(w, d);
-      if (d === 0) queue.push(w);
+    for (const w of outEdges(v)) {
+      if (!layer.has(w)) {
+        layer.set(w, lv + 1); // FIFO first visit == shortest distance
+        queue.push(w);
+      }
     }
   }
+  for (const id of rootIds) if (!layer.has(id)) layer.set(id, 0);
+
+  // ---- pass 2: topological pull (never backward, never padding) ---------
+  const indeg2 = new Map<ID, number>();
+  for (const id of rootIds) indeg2.set(id, 0);
+  for (const id of rootIds) {
+    for (const w of outEdges(id)) indeg2.set(w, (indeg2.get(w) ?? 0) + 1);
+  }
+  const ready: ID[] = [];
+  for (const id of rootIds) if ((indeg2.get(id) ?? 0) === 0) ready.push(id);
+  let ri = 0;
+  while (ri < ready.length) {
+    const v = ready[ri++];
+    const lv = layer.get(v)!;
+    for (const w of outEdges(v)) {
+      if (layer.get(w)! < lv) layer.set(w, lv);
+      const d = (indeg2.get(w) ?? 0) - 1;
+      indeg2.set(w, d);
+      if (d === 0) ready.push(w);
+    }
+  }
+
+  // ---- compress gaps → contiguous columns 0..k --------------------------
+  const distinct = Array.from(new Set(layer.values())).sort((a, b) => a - b);
+  const remap = new Map<number, number>();
+  distinct.forEach((v, i) => remap.set(v, i));
+  for (const [id, v] of layer) layer.set(id, remap.get(v)!);
   return layer;
 }
 
