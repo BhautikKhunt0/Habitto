@@ -7,13 +7,16 @@
  *    boxes are never touched, and lone selected nodes with no connection to any
  *    other selected node are left exactly where they are (there is nothing to
  *    "arrange" about them).
- *  - **Deterministic & meaningful** (never random): longest-path layering along
- *    the directed edges (cycles are broken by DFS back-edge removal), median-
- *    heuristic sweeps to reduce edge crossings, then aligned columns/rows with
- *    even gaps.
+ *  - **Deterministic & meaningful** (never random, never click-order
+ *    dependent): nodes are visited in canonical geometry order, cycles are
+ *    broken at the geometrically-backward edge (so a double-headed connector
+ *    always keeps its forward direction and arrows never render against the
+ *    flow), median-heuristic sweeps reduce edge crossings, then columns align
+ *    perfectly and ROWS share one top across columns (grid alignment).
  *  - **Respects the user's flow direction**: the dominant axis of the current
- *    edge geometry decides left→right vs top→bottom, so a chain you drew
- *    vertically stays vertical after tidying.
+ *    edge geometry decides left→right vs top→bottom, with ties broken toward
+ *    horizontal (mind-maps read left→right), so a chain you drew vertically
+ *    stays vertical after tidying but a square-ish scatter never flips.
  *  - **In-place**: the arranged group is translated so its bounding-box center
  *    matches the selection's original center — boxes tidy up where they are.
  *
@@ -35,9 +38,9 @@ export interface LayoutPlacement extends LayoutPoint {
 }
 
 /** World-unit gaps (zoom-independent, so layout looks identical at any zoom). */
-const GAP_PRIMARY = 150; // between layers/rows — room for connectors to arc
-const GAP_SECONDARY = 80; // between boxes stacked inside one layer/column
-const GAP_COMPONENT = 200; // between disconnected groups in the selection
+const GAP_PRIMARY = 200; // between layers/columns — room for connectors to arc
+const GAP_SECONDARY = 120; // between boxes stacked inside one layer/column
+const GAP_COMPONENT = 240; // between disconnected groups in the selection
 
 // ---- flow-space helpers ----------------------------------------------------
 const cx = (b: Box) => b.x + b.w / 2;
@@ -50,8 +53,18 @@ const secSize = (b: Box, flowH: boolean) => (flowH ? b.h : b.w);
 /**
  * DFS that classifies edges: edges to a GRAY node are back edges (part of a
  * cycle) and get dropped; everything else is kept. The result is a DAG.
+ *
+ * Out-neighbours are explored in `rank` order — geometrically-forward edges
+ * first — so a cycle is always "opened" at the edge that already points
+ * against the flow. The kept direction then renders forward after layout,
+ * which is what makes double-headed connectors read sensibly instead of
+ * landing mirrored by whichever box happened to be clicked first.
  */
-function buildDag(rootIds: ID[], out: Map<ID, Set<ID>>): Map<ID, ID[]> {
+function buildDag(
+  rootIds: ID[],
+  out: Map<ID, Set<ID>>,
+  rankOf: (from: ID, to: ID) => number
+): Map<ID, ID[]> {
   const WHITE = 0;
   const GRAY = 1;
   const BLACK = 2;
@@ -61,7 +74,9 @@ function buildDag(rootIds: ID[], out: Map<ID, Set<ID>>): Map<ID, ID[]> {
 
   const visit = (v: ID) => {
     color.set(v, GRAY);
-    for (const w of out.get(v) ?? []) {
+    const neigh = Array.from(out.get(v) ?? []);
+    neigh.sort((a, b) => rankOf(v, a) - rankOf(v, b));
+    for (const w of neigh) {
       if (!dag.has(w)) continue; // outside this component
       const c = color.get(w) ?? WHITE;
       if (c === GRAY) continue; // back edge → drop (breaks the cycle)
@@ -109,10 +124,11 @@ function computeLayers(rootIds: ID[], dag: Map<ID, ID[]>): Map<ID, number> {
 }
 
 /**
- * Crossing reduction: 4 median-heuristic sweeps (down, up, down, up). Each
+ * Crossing reduction: 6 median-heuristic sweeps (down/up alternating). Each
  * layer is re-sorted by the median secondary position of its neighbours on the
  * side being swept; nodes without neighbours there keep their place. Stable
- * sort keeps ties deterministic.
+ * sort keeps ties deterministic (the initial order is geometry-sorted, so the
+ * result never depends on selection/click order).
  */
 function orderLayers(
   layers: ID[][],
@@ -150,7 +166,7 @@ function orderLayers(
     return vals.length % 2 === 1 ? vals[m] : (vals[m - 1] + vals[m]) / 2;
   };
 
-  for (let iter = 0; iter < 4; iter++) {
+  for (let iter = 0; iter < 6; iter++) {
     const down = iter % 2 === 0;
     const pos = provisional();
     for (let i = 0; i < layers.length - 1; i++) {
@@ -234,7 +250,19 @@ export function computeAutoLayout(
     dySum += Math.abs(cy(b) - cy(a));
   }
   if (edgeCount === 0) return null;
-  const flowH = dxSum >= dySum; // dominant axis of the CURRENT arrangement
+  // Dominant axis of the CURRENT arrangement; near-ties break toward
+  // horizontal so a square-ish scatter never flips into rows unexpectedly.
+  const flowH = dxSum >= dySum * 0.85;
+
+  // Geometric rank of an edge along the flow: forward edges come first when
+  // the cycle-breaking DFS explores, so cycles open at backward edges.
+  const rankOf = (from: ID, to: ID): number => {
+    const A = nodes.get(from);
+    const B = nodes.get(to);
+    if (!A || !B) return 1;
+    const d = flowH ? cx(B) - cx(A) : cy(B) - cy(A);
+    return d > 0 ? 0 : d === 0 ? 1 : 2;
+  };
 
   // ---- 3. weakly-connected components (size ≥ 2 only) --------------------
   const seen = new Set<ID>();
@@ -258,6 +286,19 @@ export function computeAutoLayout(
   }
   if (components.length === 0) return null; // lone nodes → nothing to arrange
 
+  // Canonical member order (geometry first, id as the final tie-break) so the
+  // layout is identical no matter which box the user selected first.
+  const byGeom = (a: ID, b: ID): number => {
+    const A = nodes.get(a)!;
+    const B = nodes.get(b)!;
+    return (
+      primCoord(A, flowH) - primCoord(B, flowH) ||
+      secCoord(A, flowH) - secCoord(B, flowH) ||
+      a.localeCompare(b)
+    );
+  };
+  for (const comp of components) comp.sort(byGeom);
+
   // ---- 4. per-component layered layout -----------------------------------
   const comps: ComponentLayout[] = [];
   for (const comp of components) {
@@ -269,17 +310,21 @@ export function computeAutoLayout(
       outLocal.set(id, s);
     }
 
-    const dag = buildDag(comp, outLocal);
+    const dag = buildDag(comp, outLocal, rankOf);
     const layerOf = computeLayers(comp, dag);
 
     let maxLayer = 0;
     for (const l of layerOf.values()) maxLayer = Math.max(maxLayer, l);
     const layers: ID[][] = Array.from({ length: maxLayer + 1 }, () => []);
     for (const id of comp) layers[layerOf.get(id)!].push(id);
-    // Initial order follows the user's current placement along the stacking axis.
+    // Initial order follows the user's current placement along the stacking
+    // axis (secondary first, then primary) — fully geometry-derived, so ties
+    // can never leak selection order into the result.
     for (const arr of layers) {
       arr.sort(
-        (a, b) => secCoord(nodes.get(a)!, flowH) - secCoord(nodes.get(b)!, flowH)
+        (a, b) =>
+          secCoord(nodes.get(a)!, flowH) - secCoord(nodes.get(b)!, flowH) ||
+          primCoord(nodes.get(a)!, flowH) - primCoord(nodes.get(b)!, flowH)
       );
     }
 
@@ -287,7 +332,12 @@ export function computeAutoLayout(
       secSize(nodes.get(id)!, flowH)
     );
 
-    // Secondary: stack inside each layer, then center every layer on the axis.
+    // Secondary: stack inside each layer (every stack starts at 0 so slot
+    // indices mean the same thing in every layer), then GRID-ALIGN: the i-th
+    // node of every multi-node layer gets ONE shared top, so rows line up
+    // horizontally across columns exactly like the reference layout. A slot's
+    // shared top is raised (for all layers at once) whenever any layer would
+    // overlap — rows stay aligned AND collision-free.
     const prim = new Map<ID, number>();
     const sec = new Map<ID, number>();
     const layerSecHeights: number[] = [];
@@ -299,10 +349,60 @@ export function computeAutoLayout(
       }
       layerSecHeights.push(Math.max(0, c - GAP_SECONDARY));
     }
+
+    const multiLayers = layers
+      .map((_, li) => li)
+      .filter((li) => layers[li].length >= 2);
+    if (multiLayers.length >= 2) {
+      const slotCount = Math.max(...multiLayers.map((li) => layers[li].length));
+      const slotTop: number[] = [];
+      const slotOk: boolean[] = [];
+      for (let s = 0; s < slotCount; s++) {
+        let sum = 0;
+        let cnt = 0;
+        for (const li of multiLayers) {
+          if (s < layers[li].length) {
+            sum += sec.get(layers[li][s])!;
+            cnt++;
+          }
+        }
+        slotOk[s] = cnt >= 2; // a slot only one layer reaches stays private
+        slotTop[s] = cnt >= 2 ? sum / cnt : 0;
+      }
+      for (let s = 1; s < slotCount; s++) {
+        if (!slotOk[s]) continue;
+        let need = slotTop[s];
+        for (const li of multiLayers) {
+          if (s >= layers[li].length) continue;
+          const prev = layers[li][s - 1];
+          const prevTop = slotOk[s - 1] ? slotTop[s - 1] : sec.get(prev)!;
+          need = Math.max(
+            need,
+            prevTop + secSize(nodes.get(prev)!, flowH) + GAP_SECONDARY
+          );
+        }
+        slotTop[s] = need;
+      }
+      for (let s = 0; s < slotCount; s++) {
+        if (!slotOk[s]) continue;
+        for (const li of multiLayers) {
+          if (s < layers[li].length) sec.set(layers[li][s], slotTop[s]);
+        }
+      }
+    }
+
+    // Recompute block heights after alignment. Multi-node layers are the grid
+    // (anchored at 0); single-node layers have no row partner, so they simply
+    // center inside the full extent — a lone source/sink sits mid-height.
+    layers.forEach((arr, li) => {
+      const last = arr[arr.length - 1];
+      layerSecHeights[li] = sec.get(last)! + secSize(nodes.get(last)!, flowH);
+    });
     const secExtent = Math.max(...layerSecHeights);
-    layers.forEach((_, li) => {
+    layers.forEach((arr, li) => {
+      if (arr.length >= 2) return;
       const off = (secExtent - layerSecHeights[li]) / 2;
-      for (const id of layers[li]) sec.set(id, sec.get(id)! + off);
+      for (const id of arr) sec.set(id, sec.get(id)! + off);
     });
 
     // Primary: every box of a layer shares ONE coordinate → perfectly aligned
@@ -336,7 +436,10 @@ export function computeAutoLayout(
   }
 
   // ---- 5. combine components (order along flow, stack across) ------------
-  comps.sort((a, b) => a.origPrimCenter - b.origPrimCenter);
+  comps.sort(
+    (a, b) =>
+      a.origPrimCenter - b.origPrimCenter || a.ids[0].localeCompare(b.ids[0])
+  );
   const maxPrimExtent = Math.max(...comps.map((c) => c.primExtent));
   const totalSec =
     comps.reduce((acc, c) => acc + c.secExtent + GAP_COMPONENT, 0) -
