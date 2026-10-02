@@ -4,7 +4,6 @@ import { Dashboard } from "./pages/Dashboard";
 import { Tasks } from "./pages/Tasks";
 import { Stats } from "./pages/Stats";
 import { Settings } from "./pages/Settings";
-import { Journal } from "./pages/Journal";
 import { Kanban } from "./pages/Kanban";
 import { Canvas } from "./pages/Canvas";
 import { Focus } from "./pages/Focus";
@@ -67,7 +66,6 @@ export default function App() {
               <Route path="canvas" element={<Canvas />} />
               <Route path="focus" element={<Focus />} />
               <Route path="stats" element={<Stats />} />
-              <Route path="journal" element={<Journal />} />
               <Route path="settings" element={<Settings />} />
             </Route>
           </Routes>

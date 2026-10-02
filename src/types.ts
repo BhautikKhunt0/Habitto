@@ -27,13 +27,24 @@ export interface CompletionRecord {
   completedAt: string; // timestamp
 }
 
-export interface JournalEntry {
+/** Categories for Done List wins — fixed set keeps the UI's color language tight. */
+export type DoneCategory =
+  | 'work'
+  | 'learning'
+  | 'health'
+  | 'personal'
+  | 'creation'
+  | 'errands';
+
+/** A single "done" win the user logged for a day. */
+export interface DoneEntry {
   id: string;
   date: string; // "YYYY-MM-DD"
   content: string;
-  mood?: 'great' | 'good' | 'neutral' | 'bad' | 'awful';
-  createdAt: string;
-  updatedAt: string;
+  category?: DoneCategory;
+  starred?: boolean; // day's highlight
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
 }
 
 export interface CustomTheme {
@@ -70,7 +81,7 @@ export interface TemporaryTask {
 export interface AppData {
   tasks: Task[];
   completions: CompletionRecord[];
-  journalEntries?: JournalEntry[];
+  doneEntries?: DoneEntry[];
   kanbanTasks?: KanbanTask[];
   temporaryTasks?: TemporaryTask[];
   customTaskLists?: CustomTaskList[];

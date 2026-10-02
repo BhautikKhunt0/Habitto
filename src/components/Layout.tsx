@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, CheckSquare, BarChart2, Settings, Book, Kanban, Timer, Shapes } from "lucide-react";
+import { LayoutDashboard, CheckSquare, BarChart2, Settings, Kanban, Timer, Shapes } from "lucide-react";
 import { useEffect, useMemo, useRef, type FC, type MouseEvent as ReactMouseEvent } from "react";
 import { cn, hexToRgb } from "../lib/utils";
 import { motion } from "framer-motion";
@@ -184,7 +184,6 @@ export function Layout() {
     { name: "Kanban", path: "/kanban", icon: Kanban },
     { name: "Canvas", path: "/canvas", icon: Shapes },
     { name: "Focus", path: "/focus", icon: Timer },
-    { name: "Journal", path: "/journal", icon: Book },
     { name: "Analytics", path: "/stats", icon: BarChart2 },
     { name: "Settings", path: "/settings", icon: Settings },
   ];

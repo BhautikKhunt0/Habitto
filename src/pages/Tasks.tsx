@@ -5,6 +5,7 @@ import { Plus, X, Calendar, Search, Edit2, Trash2 } from "lucide-react";
 import { formatFrequency, cn } from "../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { TemporaryTasks } from "../components/TemporaryTasks";
+import { DoneListPanel } from "../components/DoneListPanel";
 
 export function Tasks() {
   const tasks = useStore((state) => state.tasks);
@@ -128,6 +129,17 @@ export function Tasks() {
         >
           Temporary Tasks
           {activeTab === "temporary" && <motion.div layoutId="tasks-tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("done")}
+          className={cn(
+            "px-3 pb-3 pt-1 text-sm font-medium tracking-wide transition-colors relative whitespace-nowrap",
+            activeTab === "done" ? "text-theme-text" : "text-theme-muted hover:text-theme-text"
+          )}
+        >
+          Done List
+          {activeTab === "done" && <motion.div layoutId="tasks-tab-indicator" className="absolute bottom-0 left-0 right-0 h-[2px] bg-theme-text" />}
         </button>
 
         {customTaskLists.map((list) => {
@@ -294,6 +306,8 @@ export function Tasks() {
         <div className="max-w-2xl mx-auto">
           <TemporaryTasks listId="temporary" title="Temporary Tasks" />
         </div>
+      ) : activeTab === "done" ? (
+        <DoneListPanel />
       ) : activeCustomList ? (
         <div className="max-w-2xl mx-auto">
           <TemporaryTasks 

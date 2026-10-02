@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Task, CompletionRecord, AppData, CustomTheme, JournalEntry, KanbanTask, TemporaryTask, CustomTaskList } from '../types';
+import { Task, CompletionRecord, AppData, CustomTheme, DoneEntry, KanbanTask, TemporaryTask, CustomTaskList } from '../types';
 import { format } from 'date-fns';
 
 export const DEFAULT_THEMES = [
@@ -17,7 +17,7 @@ interface StoreState extends AppData {
   themeColor: string;
   themeId: string;
   customThemes: CustomTheme[];
-  journalEntries: JournalEntry[];
+  doneEntries: DoneEntry[];
   kanbanTasks: KanbanTask[];
   temporaryTasks: TemporaryTask[];
   customTaskLists: CustomTaskList[];
@@ -34,9 +34,10 @@ interface StoreState extends AppData {
   deleteTask: (id: string, keepHistory: boolean) => void;
   toggleCompletion: (taskId: string, date: string) => void;
   
-  addJournalEntry: (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => void;
-  deleteJournalEntry: (id: string) => void;
+  addDoneEntry: (entry: Omit<DoneEntry, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateDoneEntry: (id: string, updates: Partial<DoneEntry>) => void;
+  deleteDoneEntry: (id: string) => void;
+  toggleDoneStar: (id: string) => void;
   addKanbanTask: (task: Omit<KanbanTask, "id" | "createdAt">) => void;
   updateKanbanTask: (id: string, updates: Partial<KanbanTask>) => void;
   deleteKanbanTask: (id: string) => void;
@@ -61,7 +62,7 @@ export const useStore = create<StoreState>()(
     (set, get) => ({
       tasks: [],
       completions: [],
-      journalEntries: [],
+      doneEntries: [],
       kanbanTasks: [],
       temporaryTasks: [],
       customTaskLists: [],
@@ -120,9 +121,9 @@ export const useStore = create<StoreState>()(
         }
       }),
 
-      addJournalEntry: (entryData) => set((state) => ({
-        journalEntries: [
-          ...state.journalEntries,
+      addDoneEntry: (entryData) => set((state) => ({
+        doneEntries: [
+          ...state.doneEntries,
           {
             ...entryData,
             id: crypto.randomUUID(),
@@ -132,13 +133,27 @@ export const useStore = create<StoreState>()(
         ]
       })),
 
-      updateJournalEntry: (id, updates) => set((state) => ({
-        journalEntries: state.journalEntries.map(e => e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e)
+      updateDoneEntry: (id, updates) => set((state) => ({
+        doneEntries: state.doneEntries.map(e => e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e)
       })),
 
-      deleteJournalEntry: (id) => set((state) => ({
-        journalEntries: state.journalEntries.filter(e => e.id !== id)
+      deleteDoneEntry: (id) => set((state) => ({
+        doneEntries: state.doneEntries.filter(e => e.id !== id)
       })),
+
+      // Exactly one highlight per day: starring one clears any other star that day.
+      toggleDoneStar: (id) => set((state) => {
+        const target = state.doneEntries.find(e => e.id === id);
+        if (!target) return {};
+        const nowStarred = !target.starred;
+        return {
+          doneEntries: state.doneEntries.map(e => {
+            if (e.id === id) return { ...e, starred: nowStarred, updatedAt: new Date().toISOString() };
+            if (nowStarred && e.date === target.date && e.starred) return { ...e, starred: false };
+            return e;
+          })
+        };
+      }),
 
       addKanbanTask: (taskData) => set((state) => ({
         kanbanTasks: [
@@ -221,7 +236,7 @@ export const useStore = create<StoreState>()(
       importData: (data) => set(() => ({
         tasks: data.tasks || [],
         completions: data.completions || [],
-        journalEntries: data.journalEntries || [],
+        doneEntries: data.doneEntries || [],
         kanbanTasks: data.kanbanTasks || [],
         temporaryTasks: data.temporaryTasks || [],
         customTaskLists: data.customTaskLists || [],
@@ -233,7 +248,7 @@ export const useStore = create<StoreState>()(
         customThemes: data.customThemes || [],
       })),
 
-      clearData: () => set(() => ({ tasks: [], completions: [], journalEntries: [], kanbanTasks: [], temporaryTasks: [], customTaskLists: [] }))
+      clearData: () => set(() => ({ tasks: [], completions: [], doneEntries: [], kanbanTasks: [], temporaryTasks: [], customTaskLists: [] }))
     }),
     {
       name: 'habit-tracker-data',

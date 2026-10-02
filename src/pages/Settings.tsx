@@ -44,7 +44,7 @@ export function Settings() {
     const data = {
       tasks: state.tasks,
       completions: state.completions,
-      journalEntries: state.journalEntries,
+      doneEntries: state.doneEntries,
       kanbanTasks: state.kanbanTasks,
       temporaryTasks: state.temporaryTasks,
       customTaskLists: state.customTaskLists,
