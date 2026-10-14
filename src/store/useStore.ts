@@ -33,7 +33,9 @@ interface StoreState extends AppData {
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string, keepHistory: boolean) => void;
   toggleCompletion: (taskId: string, date: string) => void;
-  
+  /** Reorder the dashboard board to match the given id sequence. */
+  reorderTasks: (orderedIds: string[]) => void;
+
   addDoneEntry: (entry: Omit<DoneEntry, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateDoneEntry: (id: string, updates: Partial<DoneEntry>) => void;
   deleteDoneEntry: (id: string) => void;
@@ -119,6 +121,16 @@ export const useStore = create<StoreState>()(
             ]
           };
         }
+      }),
+
+      // Renumber `order` across the given sequence so it stays dense — gaps would
+      // make "drop between A and C" ambiguous. Tasks outside the sequence keep
+      // their existing rank.
+      reorderTasks: (orderedIds) => set((state) => {
+        const rank = new Map(orderedIds.map((id, index) => [id, index]));
+        return {
+          tasks: state.tasks.map(t => rank.has(t.id) ? { ...t, order: rank.get(t.id)! } : t),
+        };
       }),
 
       addDoneEntry: (entryData) => set((state) => ({

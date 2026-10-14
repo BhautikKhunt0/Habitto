@@ -1,7 +1,8 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, CheckSquare, BarChart2, Settings, Kanban, Timer, Shapes } from "lucide-react";
+import { LayoutDashboard, CheckSquare, Settings, Timer, Shapes } from "lucide-react";
 import { useEffect, useMemo, useRef, type FC, type MouseEvent as ReactMouseEvent } from "react";
 import { cn, hexToRgb } from "../lib/utils";
+import { useOverlayOpen } from "../lib/overlay";
 import { motion } from "framer-motion";
 import { useStore, DEFAULT_THEMES } from "../store/useStore";
 
@@ -56,6 +57,10 @@ export function Layout() {
   const location = useLocation();
 
   const isCanvas = location.pathname === "/canvas";
+
+  // A modal owns the viewport while it's open — the dock recedes instead of
+  // sitting behind the scrim where a bottom sheet's buttons would land.
+  const overlayOpen = useOverlayOpen();
 
   const themeMode = useStore(state => state.themeMode);
   const themeId = useStore(state => state.themeId);
@@ -181,10 +186,8 @@ export function Layout() {
   const navItems = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "Tasks", path: "/tasks", icon: CheckSquare },
-    { name: "Kanban", path: "/kanban", icon: Kanban },
     { name: "Canvas", path: "/canvas", icon: Shapes },
     { name: "Focus", path: "/focus", icon: Timer },
-    { name: "Analytics", path: "/stats", icon: BarChart2 },
     { name: "Settings", path: "/settings", icon: Settings },
   ];
 
@@ -232,9 +235,21 @@ export function Layout() {
         onMouseMove={handleNeonMove}
         onMouseLeave={handleNeonLeave}
         initial={{ opacity: 0, y: 50, filter: "blur(6px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-        transition={{ type: "spring", damping: 28, stiffness: 320 }}
-        className="neon-dock fixed z-50 flex flex-row items-center gap-2 md:gap-4 p-2 md:p-3 rounded-full shadow-2xl shadow-black/10 dark:shadow-[0_20px_40px_rgb(0,0,0,0.4)] bottom-8 left-1/2 -translate-x-1/2"
+        animate={
+          overlayOpen
+            ? { opacity: 0, y: 40, filter: "blur(8px)" }
+            : { opacity: 1, y: 0, filter: "blur(0px)" }
+        }
+        transition={
+          overlayOpen
+            ? { duration: 0.2, ease: "easeOut" }
+            : { type: "spring", damping: 28, stiffness: 320 }
+        }
+        aria-hidden={overlayOpen}
+        className={cn(
+          "neon-dock fixed z-50 flex flex-row items-center gap-2 rounded-full p-2 shadow-2xl shadow-black/10 dark:shadow-[0_20px_40px_rgb(0,0,0,0.4)] bottom-8 left-1/2 -translate-x-1/2 md:gap-4 md:p-3",
+          overlayOpen && "pointer-events-none"
+        )}
       >
         <div className="absolute inset-0 rounded-full pointer-events-none -z-10" style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }} />
         {navItems.map((item) => (

@@ -19,6 +19,10 @@ export interface Task {
   endDate?: string; // "YYYY-MM-DD"
   archived: boolean;
   notes?: string;
+  /** Dashboard card subtitle — "15 min", "30 pages". Free text by design. */
+  metric?: string;
+  /** Manual position on the dashboard board. Absent = fall back to createdAt. */
+  order?: number;
 }
 
 export interface CompletionRecord {

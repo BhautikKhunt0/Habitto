@@ -1,10 +1,8 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { Tasks } from "./pages/Tasks";
-import { Stats } from "./pages/Stats";
 import { Settings } from "./pages/Settings";
-import { Kanban } from "./pages/Kanban";
 import { Canvas } from "./pages/Canvas";
 import { Focus } from "./pages/Focus";
 import { useState, useEffect } from "react";
@@ -62,11 +60,12 @@ export default function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="tasks" element={<Tasks />} />
-              <Route path="kanban" element={<Kanban />} />
               <Route path="canvas" element={<Canvas />} />
               <Route path="focus" element={<Focus />} />
-              <Route path="stats" element={<Stats />} />
               <Route path="settings" element={<Settings />} />
+              {/* /stats and /kanban were folded into the dashboard / dropped —
+                  send stale bookmarks and links home instead of a blank screen. */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
         </BrowserRouter>

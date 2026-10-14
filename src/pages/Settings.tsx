@@ -4,6 +4,7 @@ import { Trash2, Download, Upload, AlertCircle, Moon, Sun, Monitor, Palette, Che
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../lib/utils";
 import { createPortal } from "react-dom";
+import { OverlaySignal } from "../lib/overlay";
 
 export function Settings() {
   const {
@@ -308,6 +309,8 @@ export function Settings() {
 
       </div>
 
+      {isClearModalOpen && <OverlaySignal active />}
+
       {createPortal(
         <AnimatePresence>
           {isClearModalOpen && (
@@ -343,6 +346,8 @@ export function Settings() {
         </AnimatePresence>,
         document.body
       )}
+
+      {isAddThemeModalOpen && <OverlaySignal active />}
 
       {createPortal(
         <AnimatePresence>

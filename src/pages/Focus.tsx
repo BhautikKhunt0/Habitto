@@ -1,9 +1,23 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, RotateCcw } from "lucide-react";
+import { Bell, BellOff, Check, Play, Pause, RotateCcw } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { cn } from "../lib/utils";
+import { useStore } from "../store/useStore";
+import { dayKey } from "../lib/stats";
+import { playCompletionChime } from "../lib/chime";
+import {
+  notificationPermission,
+  notify,
+  requestNotificationPermission,
+  type NotifyPermission,
+} from "../lib/notify";
+import { OverlaySignal } from "../lib/overlay";
+import { RainBackdrop } from "../components/RainBackdrop";
 
 const MAX_SECONDS = 24 * 60 * 60; // 24 Hours Max (86400 seconds)
+
+const ALERTS_KEY = "habitto:focus-alerts";
 
 const AnimatedNumber = ({ value }: { value: string }) => {
   return (
@@ -29,11 +43,31 @@ const AnimatedNumber = ({ value }: { value: string }) => {
 };
 
 export function Focus() {
+  const location = useLocation();
+  const tasks = useStore((state) => state.tasks);
+
+  /* Arriving from a habit card carries the habit with it: the purpose is
+     pre-filled with its name and finishing the timer ticks it off. */
+  const link = (location.state as { taskId?: string; date?: string } | null) ?? null;
+  const [linked, setLinked] = useState<{ id: string; name: string; date: string } | null>(null);
+
   const [totalSeconds, setTotalSeconds] = useState(25 * 60);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isActive, setIsActive] = useState(false);
   const [progress, setProgress] = useState(0);
   const [purpose, setPurpose] = useState("");
+
+  /* Arriving from a habit card carries the habit with it: the purpose is
+     pre-filled with its name and finishing the timer ticks it off. */
+  useEffect(() => {
+    if (!link?.taskId) {
+      setLinked(null);
+      return;
+    }
+    const task = tasks.find((t) => t.id === link.taskId);
+    setLinked(task ? { id: task.id, name: task.name, date: link.date ?? dayKey(new Date()) } : null);
+    if (task) setPurpose(task.name);
+  }, [link?.taskId, link?.date, tasks]);
 
   // Clean numerical string states for the input boxes
   const [hoursInput, setHoursInput] = useState("00");
@@ -44,6 +78,138 @@ export function Focus() {
 
   const endTimeRef = useRef<number | null>(null);
   const totalTimeRef = useRef<number>(25 * 60);
+
+  // The linked habit is read from the timer loop, which closes over older renders.
+  const linkedRef = useRef(linked);
+  useEffect(() => {
+    linkedRef.current = linked;
+  }, [linked]);
+
+  const [finished, setFinished] = useState(false);
+
+  /*
+   * Alerts are a user preference, not user data, so they live in localStorage
+   * rather than the app store. Read the browser's own permission separately —
+   * the two can disagree, and that's exactly what the chip has to describe.
+   */
+  const [alertsOn, setAlertsOn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(ALERTS_KEY) !== "off";
+    } catch {
+      return true;
+    }
+  });
+  const [permission, setPermission] = useState<NotifyPermission>(() => notificationPermission());
+
+  // finishSession is invoked from the worker callback, which holds a very old
+  // closure — the toggle has to be read through a ref.
+  const alertsRef = useRef(alertsOn);
+
+  useEffect(() => {
+    alertsRef.current = alertsOn;
+    try {
+      localStorage.setItem(ALERTS_KEY, alertsOn ? "on" : "off");
+    } catch {
+      // Private mode — the preference just won't survive a reload.
+    }
+
+    // The user can change site permissions in browser settings while we're open.
+    const sync = () => setPermission(notificationPermission());
+    window.addEventListener("focus", sync);
+    return () => window.removeEventListener("focus", sync);
+  }, [alertsOn]);
+
+  const toggleAlerts = async () => {
+    if (alertsOn) {
+      setAlertsOn(false);
+      return;
+    }
+
+    // Browsers only allow the permission prompt from a real gesture, and only
+    // while the site is still un-decided — once blocked, nothing we can do.
+    if (notificationPermission() === "default") {
+      setPermission(await requestNotificationPermission());
+    }
+    setAlertsOn(true);
+  };
+
+  /*
+   * Both the interval below and the worker can spot the end of the session, so
+   * the first one to get there wins and the other is ignored.
+   */
+  const settledRef = useRef(false);
+
+  /* Fired when the clock runs out — from a timer, so it lands whether or not
+     the user is looking at this tab. */
+  const finishSession = () => {
+    if (settledRef.current) return;
+    settledRef.current = true;
+
+    // The in-page card is the point of the app, so it shows either way.
+    setFinished(true);
+
+    if (alertsRef.current) {
+      playCompletionChime();
+
+      const current = linkedRef.current;
+      const minutes = Math.max(1, Math.round(totalTimeRef.current / 60));
+
+      // Desktop alert reaches the user when they've wandered off to another tab.
+      notify(
+        current ? `${current.name} — done` : "Focus session complete",
+        current
+          ? `${minutes} min logged. Habit ticked off.`
+          : `${minutes} min of focus logged.`,
+      );
+    }
+
+    // Finishing the session counts as doing the habit. Read the store directly:
+    // the timer loop closes over values from an older render.
+    const current = linkedRef.current;
+    if (current) {
+      const state = useStore.getState();
+      const done = state.completions.some(
+        (c) => c.taskId === current.id && c.date === current.date,
+      );
+      if (!done) state.toggleCompletion(current.id, current.date);
+    }
+  };
+
+  /*
+   * Background-tab backstop.
+   *
+   * Chrome throttles main-thread timers hard once a tab has been hidden for a
+   * while — enough that a 25-minute session could report as finished up to a
+   * minute late. Timers inside a dedicated worker escape that throttling, so
+   * this is what guarantees the alert actually goes out on time.
+   */
+  const workerRef = useRef<Worker | null>(null);
+
+  useEffect(() => {
+    const source = `let id=null;onmessage=e=>{if(id)clearTimeout(id);
+      if(e.data.type==='start'){id=setTimeout(()=>postMessage('elapsed'),e.data.ms)}
+      else{id=null}};`;
+
+    try {
+      const url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+      const worker = new Worker(url);
+      URL.revokeObjectURL(url);
+      // finishSession only reads refs and stable setters, so capturing the
+      // first render's copy is safe.
+      worker.onmessage = (event) => {
+        if (event.data === "elapsed") finishSession();
+      };
+      workerRef.current = worker;
+    } catch {
+      // Workers unavailable or blocked — the interval alone still finishes.
+      workerRef.current = null;
+    }
+
+    return () => {
+      workerRef.current?.terminate();
+      workerRef.current = null;
+    };
+  }, []);
 
   const hoursRef = useRef<HTMLInputElement>(null);
   const minutesRef = useRef<HTMLInputElement>(null);
@@ -70,93 +236,47 @@ export function Focus() {
     }
   }, [timeLeft, isActive, activeUnit]);
 
-  // Audio chime
-  const playChime = () => {
-    try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new AudioCtx();
-      const now = ctx.currentTime;
-
-      // Note 1
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = "sine";
-      osc1.frequency.setValueAtTime(523.25, now);
-      gain1.gain.setValueAtTime(0.25, now);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(now);
-      osc1.stop(now + 0.8);
-
-      // Note 2
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = "sine";
-      osc2.frequency.setValueAtTime(659.25, now + 0.15);
-      gain2.gain.setValueAtTime(0.25, now + 0.15);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(now + 0.15);
-      osc2.stop(now + 1.2);
-
-      // Note 3
-      const osc3 = ctx.createOscillator();
-      const gain3 = ctx.createGain();
-      osc3.type = "sine";
-      osc3.frequency.setValueAtTime(783.99, now + 0.3);
-      gain3.gain.setValueAtTime(0.3, now + 0.3);
-      gain3.gain.exponentialRampToValueAtTime(0.001, now + 1.6);
-      osc3.connect(gain3);
-      gain3.connect(ctx.destination);
-      osc3.start(now + 0.3);
-      osc3.stop(now + 1.6);
-    } catch {
-      // Audio context may be restricted
-    }
-  };
-
   useEffect(() => {
-    let frameId: number;
+    if (!isActive) {
+      endTimeRef.current = null;
+      workerRef.current?.postMessage({ type: "cancel" });
+      return;
+    }
 
-    const tick = () => {
-      if (!isActive || !endTimeRef.current) return;
+    if (!endTimeRef.current) {
+      endTimeRef.current = Date.now() + timeLeft * 1000;
+      totalTimeRef.current = totalSeconds;
+      settledRef.current = false;
+      workerRef.current?.postMessage({ type: "start", ms: timeLeft * 1000 });
+    }
+
+    /*
+     * setInterval, deliberately not requestAnimationFrame: frames are frozen
+     * whenever the tab is backgrounded, so an rAF countdown would stop dead
+     * and the finish alert would never fire until the user came back. Timers
+     * keep running (throttled, but running) and the clock is derived from
+     * wall-clock time anyway, so nothing drifts.
+     */
+    const id = window.setInterval(() => {
+      if (!endTimeRef.current) return;
 
       const now = Date.now();
       const remainingMs = Math.max(0, endTimeRef.current - now);
       const remainingSec = Math.ceil(remainingMs / 1000);
 
-      if (remainingSec !== timeLeft) {
-        setTimeLeft(remainingSec);
-      }
+      if (remainingSec !== timeLeft) setTimeLeft(remainingSec);
+      setProgress(Math.min(1, Math.max(0, 1 - remainingMs / 1000 / totalTimeRef.current)));
 
-      const p = 1 - (remainingMs / 1000) / totalTimeRef.current;
-      setProgress(Math.min(1, Math.max(0, p)));
-
-      if (remainingMs > 0) {
-        frameId = requestAnimationFrame(tick);
-      } else {
-        setIsActive(false);
+      if (remainingMs <= 0) {
+        window.clearInterval(id);
         endTimeRef.current = null;
+        setIsActive(false);
         setProgress(1);
-        playChime();
+        finishSession();
       }
-    };
+    }, 250);
 
-    if (isActive) {
-      if (!endTimeRef.current) {
-        endTimeRef.current = Date.now() + timeLeft * 1000;
-        totalTimeRef.current = totalSeconds;
-      }
-      frameId = requestAnimationFrame(tick);
-    } else {
-      endTimeRef.current = null;
-    }
-
-    return () => {
-      if (frameId) cancelAnimationFrame(frameId);
-    };
+    return () => window.clearInterval(id);
   }, [isActive, timeLeft, totalSeconds]);
 
   // Recalculate duration from direct string values
@@ -294,6 +414,9 @@ export function Focus() {
   const resetTimer = () => {
     setIsActive(false);
     endTimeRef.current = null;
+    workerRef.current?.postMessage({ type: "cancel" });
+    settledRef.current = false;
+    setFinished(false);
     setTimeLeft(totalSeconds);
     totalTimeRef.current = totalSeconds;
     setProgress(0);
@@ -317,19 +440,59 @@ export function Focus() {
   const runningS = (timeLeft % 60).toString().padStart(2, "0");
 
   return (
-    <div className="flex flex-col items-center justify-center w-full max-w-xl mx-auto py-8 px-4">
+    <>
+      <RainBackdrop active={isActive} />
+
+      <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-xl mx-auto py-8 px-4">
+      <OverlaySignal active={finished} />
       
       {/* Top Header Badge */}
-      <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-theme-surface border border-theme-border/70 shadow-sm mb-6">
-        <div className={cn(
-          "w-2.5 h-2.5 rounded-full transition-colors duration-300",
-          isActive ? "bg-emerald-500" : "bg-theme-accent"
-        )} />
-        <span className="text-sm font-semibold tracking-wider uppercase text-theme-text">Focus</span>
+      <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-theme-surface border border-theme-border/70 shadow-sm">
+          <div className={cn(
+            "w-2.5 h-2.5 rounded-full transition-colors duration-300",
+            isActive ? "bg-emerald-500" : "bg-theme-accent"
+          )} />
+          <span className="text-sm font-semibold tracking-wider uppercase text-theme-text">Focus</span>
+        </div>
+
+        {/*
+          One toggle for every state, icon-only so it sits quietly next to the
+          badge. The state lives in the accessible name and tooltip — a bell
+          with a word beside it was the second loudest thing on this screen.
+        */}
+        {permission !== "unsupported" && (
+          <button
+            onClick={toggleAlerts}
+            aria-pressed={alertsOn}
+            aria-label={
+              alertsOn
+                ? permission === "denied"
+                  ? "Alerts on, but blocked by your browser"
+                  : "Alerts on. Turn off"
+                : "Alerts off. Turn on"
+            }
+            title={
+              alertsOn && permission === "denied"
+                ? "Desktop alerts are blocked for this site. Allow notifications in your browser settings to get them; toggling this mutes the completion chime."
+                : alertsOn
+                  ? "Play a chime and send a desktop alert when a session finishes"
+                  : "No chime, no desktop alert — the in-page card still appears"
+            }
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border shadow-sm transition-colors duration-200",
+              alertsOn
+                ? "border-theme-accent/40 bg-theme-accent/12 text-theme-text"
+                : "border-theme-border/70 bg-theme-surface text-theme-muted hover:text-theme-text",
+            )}
+          >
+            {alertsOn ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+          </button>
+        )}
       </div>
 
       {/* Clean Purpose / Goal Input without Boxy Outline */}
-      <div className="w-full max-w-md mb-8 flex flex-col items-center">
+      <div className="w-full max-w-lg mb-8 flex flex-col items-center">
         <input
           type="text"
           value={purpose}
@@ -337,7 +500,7 @@ export function Focus() {
           readOnly={isActive}
           placeholder="What are you focusing on?"
           className={cn(
-            "w-full bg-transparent text-center font-display text-lg md:text-xl font-medium text-theme-text placeholder:text-theme-muted/40 focus:outline-none py-1.5 transition-all border-b border-transparent",
+            "w-full bg-transparent text-center font-display text-2xl md:text-3xl font-medium leading-tight text-theme-text placeholder:text-theme-muted/40 placeholder:text-xl md:placeholder:text-2xl focus:outline-none py-2 transition-all border-b border-transparent",
             isActive ? "cursor-default text-theme-text/90" : "hover:border-theme-border/60 focus:border-theme-text/40"
           )}
         />
@@ -495,6 +658,58 @@ export function Focus() {
         </button>
       </div>
 
-    </div>
+      {/* Completion card — the in-page half of the alert, for when you are here. */}
+      <AnimatePresence>
+        {finished && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] grid place-items-center bg-black/45 px-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 260, damping: 26 }}
+              className="w-full max-w-sm rounded-[2rem] border border-theme-border bg-theme-surface p-8 text-center shadow-[0_40px_80px_-30px_rgb(0_0_0/0.6)]"
+            >
+              <motion.span
+                initial={{ scale: 0.4, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 320, damping: 18, delay: 0.08 }}
+                className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-theme-accent text-theme-bg"
+              >
+                <Check className="h-7 w-7" strokeWidth={3} />
+              </motion.span>
+
+              <h2 className="mt-5 font-display text-xl font-medium text-theme-text">
+                Session complete
+              </h2>
+              <p className="mt-2 text-sm text-theme-muted">
+                {Math.max(1, Math.round(totalTimeRef.current / 60))} minutes logged
+              </p>
+
+              {linked && (
+                <p className="mt-3 rounded-full bg-theme-accent/12 px-3 py-1.5 text-xs text-theme-text">
+                  Ticked off <span className="font-medium">{linked.name}</span>
+                </p>
+              )}
+
+              <button
+                onClick={() => {
+                  setFinished(false);
+                  resetTimer();
+                }}
+                className="mt-7 w-full rounded-full bg-theme-text py-3 text-sm font-medium text-theme-bg transition-transform duration-200 active:scale-[0.98]"
+              >
+                Done
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      </div>
+    </>
   );
 }
