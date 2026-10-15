@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
-import { Check, Plus, Trash2, GripVertical, Edit2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Check, Plus, Trash2, GripVertical, ListChecks, CornerDownLeft } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -9,7 +10,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
+  type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -19,201 +20,162 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { TemporaryTask } from '../types';
+import type { TemporaryTask } from '../types';
 
 interface TemporaryTasksProps {
   listId?: string;
   title?: string;
-  isCustomList?: boolean;
-  onRenameList?: (newName: string) => void;
-  onDeleteList?: () => void;
 }
 
+/**
+ * A scratch list — things with no schedule behind them.
+ *
+ * Drag works from anywhere on the row except the controls: a 5px activation
+ * distance means a plain click still reaches the name to rename it, while any
+ * real movement picks the row up. Transforms are deliberately split across two
+ * elements — dnd-kit owns the outer one, Framer Motion the inner — so the two
+ * libraries never fight over the same `transform` while a card is in the air.
+ */
 export const TemporaryTasks: React.FC<TemporaryTasksProps> = ({
   listId = 'temporary',
   title = 'Temporary Tasks',
-  isCustomList = false,
-  onRenameList,
-  onDeleteList,
 }) => {
   const [newTaskName, setNewTaskName] = useState('');
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editedTitle, setEditedTitle] = useState(title);
-  const titleInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setEditedTitle(title);
-  }, [title]);
-
-  useEffect(() => {
-    if (isEditingTitle && titleInputRef.current) {
-      titleInputRef.current.focus();
-      titleInputRef.current.select();
-    }
-  }, [isEditingTitle]);
-
-  const handleTitleSave = () => {
-    if (editedTitle.trim() && editedTitle !== title && onRenameList) {
-      onRenameList(editedTitle.trim());
-    } else {
-      setEditedTitle(title);
-    }
-    setIsEditingTitle(false);
-  };
-  
   const allTasks = useStore((state) => state.temporaryTasks || []);
-  const temporaryTasks = allTasks.filter((t) => (t.listId || 'temporary') === listId);
   const addTemporaryTask = useStore((state) => state.addTemporaryTask);
   const reorderTemporaryTasks = useStore((state) => state.reorderTemporaryTasks);
   const clearCompletedTemporaryTasks = useStore((state) => state.clearCompletedTemporaryTasks);
 
+  const sortedTasks = useMemo(
+    () =>
+      allTasks
+        .filter((t) => (t.listId || 'temporary') === listId)
+        .sort((a, b) => a.order - b.order),
+    [allTasks, listId],
+  );
+
+  const doneCount = sortedTasks.filter((t) => t.completed).length;
+  const hasCompleted = doneCount > 0;
+
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    // A few pixels of travel, so tapping the checkbox never starts a drag.
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
-    if (over && active.id !== over.id) {
-      const oldIndex = sortedTasks.findIndex((t) => t.id === active.id);
-      const newIndex = sortedTasks.findIndex((t) => t.id === over.id);
-      
-      const newTasks = arrayMove(sortedTasks, oldIndex, newIndex).map((t, i) => ({
-        ...t,
-        order: i,
-      }));
-      
-      reorderTemporaryTasks(newTasks, listId);
-    }
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sortedTasks.findIndex((t) => t.id === active.id);
+    const newIndex = sortedTasks.findIndex((t) => t.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    reorderTemporaryTasks(
+      arrayMove(sortedTasks, oldIndex, newIndex).map((t, i) => ({ ...t, order: i })),
+      listId,
+    );
   };
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newTaskName.trim()) {
-      addTemporaryTask(newTaskName.trim(), listId);
-      setNewTaskName('');
-    }
+    const name = newTaskName.trim();
+    if (!name) return;
+    addTemporaryTask(name, listId);
+    setNewTaskName('');
   };
-
-  const sortedTasks = [...temporaryTasks].sort((a, b) => a.order - b.order);
-  const hasCompleted = sortedTasks.some(t => t.completed);
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-6 pl-6 pr-2">
-        <div className="flex items-center gap-3">
-          {isEditingTitle ? (
-            <input
-              ref={titleInputRef}
-              type="text"
-              value={editedTitle}
-              onChange={(e) => setEditedTitle(e.target.value)}
-              onBlur={handleTitleSave}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleTitleSave();
-                if (e.key === 'Escape') {
-                  setEditedTitle(title);
-                  setIsEditingTitle(false);
-                }
-              }}
-              className="text-xl font-display font-medium text-theme-text bg-transparent border-b border-theme-text focus:outline-none px-0 py-0.5"
-            />
-          ) : (
-            <h3 
-              onClick={() => isCustomList && onRenameList && setIsEditingTitle(true)}
-              className={cn(
-                "text-xl font-display font-medium text-theme-text flex items-center gap-2",
-                isCustomList && "cursor-pointer group"
-              )}
-            >
-              <span>{title}</span>
-              {isCustomList && onRenameList && (
-                <Edit2 className="w-3.5 h-3.5 text-theme-muted opacity-0 group-hover:opacity-100 transition-opacity" />
-              )}
+      {/* --------------------------------------------------------- header */}
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5">
+            <h3 className="truncate font-display text-2xl font-medium tracking-tight text-theme-text">
+              {title}
             </h3>
-          )}
-          {isCustomList && onDeleteList && (
-            <button
-              onClick={() => {
-                if (window.confirm(`Are you sure you want to delete the "${title}" tab and all its tasks?`)) {
-                  onDeleteList();
-                }
-              }}
-              title="Delete this tab"
-              className="p-1 text-theme-muted hover:text-red-500 rounded-lg hover:bg-red-500/10 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
+            <span className="rounded-full bg-theme-text/[0.07] px-2 py-0.5 text-[11px] font-semibold tabular-nums text-theme-muted">
+              {sortedTasks.length}
+            </span>
+          </div>
         </div>
 
         {hasCompleted && (
-          <button 
+          <motion.button
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => clearCompletedTemporaryTasks(listId)}
-            className="text-xs font-medium text-theme-muted hover:text-theme-text transition-colors flex items-center gap-1"
+            className="shrink-0 rounded-full border border-theme-border bg-theme-surface px-3.5 py-1.5 text-[11px] font-medium text-theme-muted shadow-sm transition-colors duration-200 hover:border-theme-text/30 hover:text-theme-text"
           >
-            Clear completed
-          </button>
+            Clear {doneCount} completed
+          </motion.button>
         )}
       </div>
 
+      {/* ----------------------------------------------------------- list */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext
-          items={sortedTasks.map(t => t.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <div className="space-y-1.5 mb-6 pl-6">
+        <SortableContext items={sortedTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2.5">
             {sortedTasks.length === 0 ? (
-              <p className="text-sm text-theme-muted/60 italic py-2">No tasks in this list yet.</p>
+              <div className="rounded-[1.5rem] border border-dashed border-theme-border px-6 py-16 text-center">
+                <ListChecks className="mx-auto h-5 w-5 text-theme-muted" strokeWidth={1.5} />
+                <p className="mt-4 font-display text-base font-medium text-theme-text">
+                  Nothing on this list
+                </p>
+                <p className="mt-1.5 text-sm text-theme-muted">
+                  Errands, one-offs, half-thoughts — add them below.
+                </p>
+              </div>
             ) : (
-              sortedTasks.map((task) => (
-                <SortableTaskItem key={task.id} task={task} />
-              ))
+              <AnimatePresence initial={false}>
+                {sortedTasks.map((task, index) => (
+                  <SortableTaskItem key={task.id} task={task} index={index} />
+                ))}
+              </AnimatePresence>
             )}
           </div>
         </SortableContext>
       </DndContext>
 
-      <form onSubmit={handleAdd} className="relative ml-6">
-        <input
-          type="text"
-          value={newTaskName}
-          onChange={(e) => setNewTaskName(e.target.value)}
-          placeholder={`Add task to ${title}...`}
-          className="w-full bg-transparent border-b border-theme-border/50 px-2 py-2 text-sm text-theme-text placeholder-theme-muted/50 focus:outline-none focus:border-theme-text transition-colors"
-        />
-        <button
-          type="submit"
-          disabled={!newTaskName.trim()}
-          className="absolute right-0 top-1/2 -translate-y-1/2 p-1 text-theme-muted hover:text-theme-text disabled:opacity-50 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
+      {/* ------------------------------------------------------- composer */}
+      <form onSubmit={handleAdd} className="mt-4">
+        <div className="group relative rounded-[1.25rem] border border-theme-border bg-theme-bg shadow-sm transition-colors duration-200 focus-within:border-theme-text/40">
+          <Plus className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-theme-muted transition-colors duration-200 group-focus-within:text-theme-text" />
+          <input
+            type="text"
+            value={newTaskName}
+            onChange={(e) => setNewTaskName(e.target.value)}
+            placeholder={`Add to ${title.toLowerCase()}...`}
+            aria-label={`Add a task to ${title}`}
+            className="w-full bg-transparent py-3 pl-11 pr-12 text-sm text-theme-text outline-none placeholder:text-theme-muted/50"
+          />
+          <button
+            type="submit"
+            disabled={!newTaskName.trim()}
+            aria-label="Add task"
+            className="absolute right-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-200 enabled:bg-theme-text enabled:text-theme-bg enabled:hover:opacity-90 disabled:text-theme-muted/30"
+          >
+            <CornerDownLeft className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <p className="mt-2 pl-1 text-[11px] text-theme-muted/70">
+          Press <span className="font-medium text-theme-muted">Enter</span> to add · drag any row to
+          reorder
+        </p>
       </form>
     </div>
   );
-}
+};
 
-const SortableTaskItem: React.FC<{ task: TemporaryTask }> = ({ task }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: task.id });
+const SortableTaskItem: React.FC<{ task: TemporaryTask; index: number }> = ({ task, index }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+  });
 
   const toggleTemporaryTask = useStore((state) => state.toggleTemporaryTask);
   const deleteTemporaryTask = useStore((state) => state.deleteTemporaryTask);
@@ -224,9 +186,7 @@ const SortableTaskItem: React.FC<{ task: TemporaryTask }> = ({ task }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (isEditing && inputRef.current) inputRef.current.focus();
   }, [isEditing]);
 
   const handleSave = () => {
@@ -238,83 +198,141 @@ const SortableTaskItem: React.FC<{ task: TemporaryTask }> = ({ task }) => {
     setIsEditing(false);
   };
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 10 : 1,
-  };
-
   return (
+    // Outer: dnd-kit owns this transform and the CSS transition siblings use
+    // to slide out of the way.
     <div
       ref={setNodeRef}
-      style={style}
+      style={{
+        transform: CSS.Translate.toString(transform),
+        transition,
+        zIndex: isDragging ? 20 : undefined,
+      }}
       className={cn(
-        "group flex items-center gap-3 py-1.5 px-2 -ml-2 rounded-lg transition-colors relative",
-        isDragging && "opacity-75 bg-theme-text/5"
+        'drag-row group relative overflow-hidden rounded-[1.25rem] border select-none',
+        'transition-[border-color,box-shadow] duration-300',
+        task.completed
+          ? 'border-theme-accent/35 bg-theme-accent/[0.10]'
+          : 'border-theme-border/70 bg-theme-surface hover:border-theme-text/20 hover:shadow-[0_12px_28px_-22px_rgb(0_0_0/0.5)]',
+        isDragging &&
+          'border-theme-accent/50 shadow-[0_30px_54px_-26px_rgb(0_0_0/0.65)]',
       )}
+      {...attributes}
+      {...listeners}
     >
-      <div 
-        {...attributes} 
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing text-theme-muted hover:text-theme-text opacity-0 group-hover:opacity-100 transition-opacity absolute -left-5 p-1"
+      {/* Inner: Framer Motion owns this one, so enter/exit never fights the
+          drag transform on the element above. */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: isDragging ? 0.35 : 1, scale: isDragging ? 1.012 : 1 }}
+        exit={{ opacity: 0, scale: 0.96 }}
+        transition={{
+          duration: 0.24,
+          ease: [0.22, 1, 0.36, 1],
+          delay: isDragging ? 0 : Math.min(index * 0.035, 0.3),
+        }}
+        className="relative flex cursor-grab items-center gap-3 px-3.5 py-3 active:cursor-grabbing"
       >
-        <GripVertical className="w-3.5 h-3.5" />
-      </div>
-
-      <div className="relative flex items-center justify-center shrink-0 cursor-pointer" onClick={() => toggleTemporaryTask(task.id)}>
-        <input 
-          type="checkbox" 
-          checked={task.completed}
-          readOnly
-          className="peer sr-only"
+        {/* hairline of light along the top edge */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
         />
-        <div className={cn(
-          "w-4 h-4 rounded-full border-[1.5px] transition-all duration-300 flex items-center justify-center",
-          task.completed 
-            ? "border-theme-text bg-theme-text" 
-            : "border-theme-text/30 bg-transparent peer-hover:border-theme-text/60"
-        )}>
-          <Check className={cn(
-            "w-2.5 h-2.5 text-theme-bg transition-transform duration-300",
-            task.completed ? "scale-100" : "scale-0"
-          )} strokeWidth={3} />
-        </div>
-      </div>
-
-      {isEditing ? (
-        <input
-          ref={inputRef}
-          type="text"
-          value={editName}
-          onChange={(e) => setEditName(e.target.value)}
-          onBlur={handleSave}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSave();
-            if (e.key === 'Escape') {
-              setEditName(task.name);
-              setIsEditing(false);
-            }
-          }}
-          className="flex-1 min-w-0 bg-transparent border-b border-theme-text/30 focus:border-theme-text text-sm text-theme-text focus:outline-none px-0 py-0"
-        />
-      ) : (
-        <span 
-          onClick={() => setIsEditing(true)}
+        {/* accent spine, revealed as the row is hovered */}
+        <span
+          aria-hidden
           className={cn(
-            "flex-1 min-w-0 text-sm truncate transition-colors cursor-text hover:bg-theme-text/5 px-1 -ml-1 rounded",
-            task.completed ? "text-theme-muted line-through decoration-theme-muted/50" : "text-theme-text"
+            'pointer-events-none absolute inset-y-2.5 left-0 w-[2.5px] rounded-r-full bg-theme-accent transition-opacity duration-300',
+            task.completed ? 'opacity-100' : 'opacity-0 group-hover:opacity-70',
+          )}
+        />
+
+        <span
+          aria-hidden
+          className="shrink-0 text-theme-muted opacity-30 transition-opacity duration-200 group-hover:opacity-100"
+        >
+          <GripVertical className="h-4 w-4" />
+        </span>
+
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={task.completed}
+          aria-label={task.completed ? `Mark ${task.name} incomplete` : `Complete ${task.name}`}
+          onPointerDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          onClick={() => toggleTemporaryTask(task.id)}
+          className={cn(
+            'flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[8px] border transition-colors duration-200',
+            task.completed
+              ? 'border-theme-accent bg-theme-accent text-theme-bg'
+              : 'border-theme-text/25 hover:border-theme-text/60',
           )}
         >
-          {task.name}
-        </span>
-      )}
+          <AnimatePresence initial={false}>
+            {task.completed && (
+              <motion.span
+                key="tick"
+                initial={{ scale: 0.4, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.4, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 560, damping: 30 }}
+              >
+                <Check className="h-3 w-3" strokeWidth={3.5} />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
 
-      <button
-        onClick={() => deleteTemporaryTask(task.id)}
-        className="p-1 text-theme-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0"
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
+        {isEditing ? (
+          // Metrics are pinned to match the span exactly — no padding, no
+          // border, an explicit line height — so the row cannot resize mid-edit.
+          <input
+            ref={inputRef}
+            type="text"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onBlur={handleSave}
+            onKeyDown={(e) => {
+              // The row is a dnd-kit keyboard draggable, and Space/Enter is how
+              // its sensor starts a drag. Without this, typing a space would
+              // hijack the key, set aria-disabled, and freeze the row.
+              e.stopPropagation();
+
+              if (e.key === 'Enter') handleSave();
+              if (e.key === 'Escape') {
+                setEditName(task.name);
+                setIsEditing(false);
+              }
+            }}
+            className="min-w-0 flex-1 border-0 bg-transparent p-0 font-display text-[15px] leading-6 text-theme-text caret-theme-accent outline-none"
+          />
+        ) : (
+          <span
+            onClick={() => setIsEditing(true)}
+            title="Click to rename"
+            className={cn(
+              'min-w-0 flex-1 cursor-text truncate font-display text-[15px] leading-6 transition-colors duration-200',
+              task.completed
+                ? 'text-theme-muted line-through decoration-theme-muted/40'
+                : 'text-theme-text',
+            )}
+          >
+            {task.name}
+          </span>
+        )}
+
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          onClick={() => deleteTemporaryTask(task.id)}
+          aria-label={`Delete ${task.name}`}
+          className="shrink-0 rounded-full p-1.5 text-theme-muted opacity-0 transition-all duration-200 hover:bg-red-500/10 hover:text-red-500 focus-visible:opacity-100 group-hover:opacity-100"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </motion.div>
     </div>
   );
 };

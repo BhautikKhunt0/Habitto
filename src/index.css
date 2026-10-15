@@ -153,10 +153,12 @@ html.theme-fade *::after {
   display: none;
 }
 
-/* A habit card is a drag surface, but only where a precise pointer exists —
-   on touch the page still has to scroll when a finger lands on a card. */
+/* A habit card and a temporary-task row are drag surfaces, but only where a
+   precise pointer exists — on touch the page still has to scroll when a finger
+   lands on one. */
 @media (pointer: fine) {
-  .board-card {
+  .board-card,
+  .drag-row {
     touch-action: none;
   }
 }

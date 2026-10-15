@@ -415,16 +415,12 @@ export function Tasks() {
         </div>
       ) : activeCustomList ? (
         <div className="max-w-2xl mx-auto">
-          <TemporaryTasks 
+          {/* Rename and Delete live in the page header, which already shows them
+              for the active list — repeating them here was duplicative. */}
+          <TemporaryTasks
             key={activeCustomList.id}
-            listId={activeCustomList.id} 
+            listId={activeCustomList.id}
             title={activeCustomList.name}
-            isCustomList={true}
-            onRenameList={(newName) => updateCustomTaskList(activeCustomList.id, newName)}
-            onDeleteList={() => {
-              deleteCustomTaskList(activeCustomList.id);
-              setActiveTab("temporary");
-            }}
           />
         </div>
       ) : (
